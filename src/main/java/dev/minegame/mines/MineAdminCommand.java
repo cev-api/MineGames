@@ -26,7 +26,7 @@ public final class MineAdminCommand implements CommandExecutor {
             return true;
         }
         if (args.length == 0) {
-            player.sendMessage(ChatColor.YELLOW + "Usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|reload>");
+            player.sendMessage(ChatColor.YELLOW + "Usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>");
             return true;
         }
 
@@ -107,8 +107,16 @@ public final class MineAdminCommand implements CommandExecutor {
                 }
                 casinoFrameCommand.execute(player, subArgs);
             }
+            case "housebalance" -> minesManager.showHouseBalance(player);
+            case "housewithdraw" -> {
+                if (args.length < 2) {
+                    player.sendMessage(ChatColor.YELLOW + "Usage: /minegameadmin housewithdraw <amount|all>");
+                } else {
+                    minesManager.withdrawHouseBalance(player, args[1]);
+                }
+            }
             case "reload" -> minesManager.reloadConfig(player);
-            default -> player.sendMessage(ChatColor.YELLOW + "Usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|reload>");
+            default -> player.sendMessage(ChatColor.YELLOW + "Usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>");
         }
         return true;
     }

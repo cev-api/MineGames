@@ -16,6 +16,7 @@ public final class MinegamePlugin extends JavaPlugin {
     private RouletteStationStorage rouletteStationStorage;
     private BlockSnapshotStorage minesRestoreStorage;
     private BlockSnapshotStorage rouletteRestoreStorage;
+    private HouseBalanceStorage houseBalanceStorage;
     private MinesManager minesManager;
     private RouletteManager rouletteManager;
     private HologramManager hologramManager;
@@ -43,9 +44,11 @@ public final class MinegamePlugin extends JavaPlugin {
         minesRestoreStorage.load();
         this.rouletteRestoreStorage = new BlockSnapshotStorage(this, "roulette_restore.yml");
         rouletteRestoreStorage.load();
+        this.houseBalanceStorage = new HouseBalanceStorage(this);
+        houseBalanceStorage.load();
 
-        this.minesManager = new MinesManager(this, economy, stationStorage, minesRestoreStorage);
-        this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, rouletteRestoreStorage);
+        this.minesManager = new MinesManager(this, economy, stationStorage, minesRestoreStorage, houseBalanceStorage);
+        this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, rouletteRestoreStorage, houseBalanceStorage);
         this.hologramManager = new HologramManager(this, minesManager);
         this.frameAnimator = new FrameAnimator(this, minesManager);
         this.rouletteFrameAnimator = new RouletteFrameAnimator(this, rouletteManager);
@@ -100,6 +103,9 @@ public final class MinegamePlugin extends JavaPlugin {
         }
         if (rouletteRestoreStorage != null) {
             rouletteRestoreStorage.save();
+        }
+        if (houseBalanceStorage != null) {
+            houseBalanceStorage.save();
         }
     }
 

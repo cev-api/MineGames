@@ -26,7 +26,7 @@ public final class RouletteAdminCommand implements CommandExecutor {
             return true;
         }
         if (args.length == 0) {
-            player.sendMessage(ChatColor.YELLOW + "Usage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|reload>");
+            player.sendMessage(ChatColor.YELLOW + "Usage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>");
             return true;
         }
 
@@ -53,6 +53,14 @@ public final class RouletteAdminCommand implements CommandExecutor {
                 }
                 rouletteCasinoFrameCommand.execute(player, subArgs);
             }
+            case "housebalance" -> rouletteManager.showHouseBalance(player);
+            case "housewithdraw" -> {
+                if (args.length < 2) {
+                    player.sendMessage(ChatColor.YELLOW + "Usage: /rouletteadmin housewithdraw <amount|all>");
+                } else {
+                    rouletteManager.withdrawHouseBalance(player, args[1]);
+                }
+            }
             case "setframe", "setred", "setblack", "setgreen", "setselector" -> {
                 boolean applyAll = args.length >= 2 && args[1].equalsIgnoreCase("all");
                 int materialArgIndex = applyAll ? 2 : 1;
@@ -75,7 +83,7 @@ public final class RouletteAdminCommand implements CommandExecutor {
                 }
             }
             case "reload" -> rouletteManager.reloadConfig(player);
-            default -> player.sendMessage(ChatColor.YELLOW + "Usage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|reload>");
+            default -> player.sendMessage(ChatColor.YELLOW + "Usage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>");
         }
         return true;
     }

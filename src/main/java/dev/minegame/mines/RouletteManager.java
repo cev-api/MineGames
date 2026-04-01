@@ -44,6 +44,7 @@ public final class RouletteManager {
     private final Economy economy;
     private final RouletteStationStorage stationStorage;
     private final BlockSnapshotStorage restoreStorage;
+    private final HouseBalanceStorage houseBalanceStorage;
     private final Map<String, StationRuntime> runtimes = new HashMap<>();
     private final Map<String, List<UUID>> holograms = new HashMap<>();
 
@@ -56,6 +57,7 @@ public final class RouletteManager {
     private int bettingSeconds;
     private int spinSeconds;
     private int resultSeconds;
+    private double activationDistanceFromFrame;
     private double minBet;
     private double maxBet;
     private double redMultiplier;
@@ -72,11 +74,18 @@ public final class RouletteManager {
     private Material greenBlock;
     private Material selectorBlock;
 
-    public RouletteManager(MinegamePlugin plugin, Economy economy, RouletteStationStorage stationStorage, BlockSnapshotStorage restoreStorage) {
+    public RouletteManager(
+            MinegamePlugin plugin,
+            Economy economy,
+            RouletteStationStorage stationStorage,
+            BlockSnapshotStorage restoreStorage,
+            HouseBalanceStorage houseBalanceStorage
+    ) {
         this.plugin = plugin;
         this.economy = economy;
         this.stationStorage = stationStorage;
         this.restoreStorage = restoreStorage;
+        this.houseBalanceStorage = houseBalanceStorage;
         loadConfig();
 
         for (RouletteStationData station : stationStorage.all()) {
@@ -486,9 +495,19 @@ public final class RouletteManager {
             runtime.bets.put(player.getUniqueId(), new RouletteBet(color, amount));
         }
 
-        player.sendMessage(color(replace(msg("roulette.messages.bet-placed", "&aBet placed: &f%color% &6$%amount%"), Map.of(
-                "%color%", color.displayName(),
-                "%amount%", MONEY.format(amount)
+        RouletteBet updatedBet = runtime.bets.get(player.getUniqueId());
+        double effectiveMult = effectiveMultiplier(updatedBet.color());
+        double potential = clampPayout(updatedBet.amount() * effectiveMult);
+        double profit = Math.max(0.0, potential - updatedBet.amount());
+        player.sendMessage(color(replace(msg(
+                "roulette.messages.bet-placed",
+                "&aBet: &f%color% &7| &eW: &6$%amount% &7| &eM: &a%xmult%x &7| &eP: &6$%potential% &7| &a+$%profit%"
+        ), Map.of(
+                "%color%", updatedBet.color().displayName(),
+                "%amount%", MONEY.format(updatedBet.amount()),
+                "%xmult%", MONEY.format(effectiveMult),
+                "%potential%", MONEY.format(potential),
+                "%profit%", MONEY.format(profit)
         ))));
     }
 
@@ -512,6 +531,13 @@ public final class RouletteManager {
 
     private void tick() {
         for (StationRuntime runtime : runtimes.values()) {
+            if (!hasNearbyPlayers(runtime)) {
+                if (runtime.phase == Phase.BETTING && runtime.bets.isEmpty()) {
+                    runtime.secondsLeft = bettingSeconds;
+                }
+                updateHologram(runtime);
+                continue;
+            }
             runtime.secondsLeft--;
             if (runtime.phase == Phase.BETTING && runtime.secondsLeft <= 0) {
                 beginSpin(runtime);
@@ -562,8 +588,14 @@ public final class RouletteManager {
         runtime.resultLines.clear();
         runtime.resultLines.add("&eLanded on " + win.colorCode() + win.displayName());
         for (ResultEntry entry : results.stream().limit(8).toList()) {
-            String sign = entry.net >= 0 ? "&a+" : "&c";
-            runtime.resultLines.add(sign + "$" + MONEY.format(Math.abs(entry.net)) + " &7| &f" + entry.player + " &8| " + entry.color.colorCode() + entry.color.displayName());
+            String profitColor = entry.net >= 0 ? "&a" : "&c";
+            String profitPrefix = entry.net >= 0 ? "+" : "-";
+            runtime.resultLines.add(
+                    profitColor + profitPrefix + "$" + MONEY.format(Math.abs(entry.net))
+                            + " &7| &f" + entry.player
+                            + " &7| " + entry.color.colorCode() + entry.color.displayName()
+                            + " &7| &6$" + MONEY.format(entry.payout)
+            );
         }
 
         applyWinWipe(runtime, win);
@@ -574,10 +606,13 @@ public final class RouletteManager {
     private List<ResultEntry> settle(StationRuntime runtime, RouletteColor win) {
         List<ResultEntry> out = new ArrayList<>();
         ResultEntry topWinner = null;
+        double totalWagered = 0.0;
+        double totalPaidOut = 0.0;
 
         for (Map.Entry<UUID, RouletteBet> entry : runtime.bets.entrySet()) {
             UUID id = entry.getKey();
             RouletteBet bet = entry.getValue();
+            totalWagered += Math.max(0.0, bet.amount());
             String name = Bukkit.getOfflinePlayer(id).getName();
             if (name == null) {
                 name = "Player";
@@ -590,6 +625,7 @@ public final class RouletteManager {
                 if (!response.transactionSuccess()) {
                     payout = 0.0;
                 }
+                totalPaidOut += Math.max(0.0, payout);
                 launchWinnerFireworks(runtime, id);
             }
             double net = payout - bet.amount();
@@ -599,12 +635,21 @@ public final class RouletteManager {
             Player online = Bukkit.getPlayer(id);
             if (online != null) {
                 if (payout > 0) {
-                    online.sendMessage(color(replace(msg("roulette.messages.win-private", "&aYou won &6$%payout% &aon %color%!"), Map.of(
+                    double effectiveMult = effectiveMultiplier(win);
+                    online.sendMessage(color(replace(msg(
+                            "roulette.messages.win-private",
+                            "&aWon: &6$%payout% &7(%xmult%x) &7| &a+$%profit% &7| &f%color%"
+                    ), Map.of(
                             "%payout%", MONEY.format(payout),
+                            "%profit%", MONEY.format(Math.max(0.0, net)),
+                            "%xmult%", MONEY.format(effectiveMult),
                             "%color%", win.displayName()
                     ))));
                 } else {
-                    online.sendMessage(color(replace(msg("roulette.messages.lose-private", "&cYou lost &6$%amount% &con %color%."), Map.of(
+                    online.sendMessage(color(replace(msg(
+                            "roulette.messages.lose-private",
+                            "&cLost: &6$%amount% &7| &f%color%"
+                    ), Map.of(
                             "%amount%", MONEY.format(bet.amount()),
                             "%color%", bet.color().displayName()
                     ))));
@@ -624,8 +669,64 @@ public final class RouletteManager {
             ))));
         }
 
+        if (totalWagered > 0.0 || totalPaidOut > 0.0) {
+            houseBalanceStorage.recordRouletteResult(totalWagered, totalPaidOut);
+        }
+
         out.sort(Comparator.comparingDouble((ResultEntry r) -> r.net).reversed());
         return out;
+    }
+
+    public void showHouseBalance(Player player) {
+        double balance = houseBalanceStorage.rouletteBalance();
+        double wagered = houseBalanceStorage.rouletteTotalWagered();
+        double paid = houseBalanceStorage.rouletteTotalPayout();
+        double edge = wagered <= 0.0 ? 0.0 : ((wagered - paid) / wagered) * 100.0;
+        player.sendMessage(color("&6[Roulette] &eHouse Balance: &a$" + MONEY.format(balance)
+                + " &7| &eEdge: &a" + MONEY.format(edge) + "%"));
+        player.sendMessage(color("&7Wagered: &f$" + MONEY.format(wagered)
+                + " &7| Paid: &f$" + MONEY.format(paid)));
+    }
+
+    public void withdrawHouseBalance(Player player, String rawAmount) {
+        if (!player.hasPermission("roulette.admin")) {
+            player.sendMessage(color("&cNo permission."));
+            return;
+        }
+        double current = houseBalanceStorage.rouletteBalance();
+        if (current <= 0.0) {
+            player.sendMessage(color("&6[Roulette] &cNo house balance available to withdraw."));
+            return;
+        }
+        double wanted;
+        if (rawAmount.equalsIgnoreCase("all")) {
+            wanted = current;
+        } else {
+            try {
+                wanted = Double.parseDouble(rawAmount);
+            } catch (NumberFormatException ex) {
+                player.sendMessage(color("&cAmount must be a number or 'all'."));
+                return;
+            }
+            if (wanted <= 0.0) {
+                player.sendMessage(color("&cAmount must be greater than 0."));
+                return;
+            }
+        }
+
+        double withdrawn = houseBalanceStorage.withdrawRoulette(wanted);
+        if (withdrawn <= 0.0) {
+            player.sendMessage(color("&6[Roulette] &cNothing to withdraw."));
+            return;
+        }
+        EconomyResponse deposit = economy.depositPlayer(player, withdrawn);
+        if (!deposit.transactionSuccess()) {
+            houseBalanceStorage.refundRouletteWithdrawal(withdrawn);
+            player.sendMessage(color("&cEconomy error: withdraw failed."));
+            return;
+        }
+        player.sendMessage(color("&6[Roulette] &aWithdrew &6$" + MONEY.format(withdrawn) + " &afrom roulette house balance."));
+        player.sendMessage(color("&7Remaining roulette house balance: &a$" + MONEY.format(houseBalanceStorage.rouletteBalance())));
     }
 
     private void applyWinWipe(StationRuntime runtime, RouletteColor win) {
@@ -657,6 +758,10 @@ public final class RouletteManager {
 
     private void scheduleSpinStep(StationRuntime runtime, int step, int total) {
         if (runtime.phase != Phase.SPINNING || step >= total) {
+            return;
+        }
+        if (!hasNearbyPlayers(runtime)) {
+            runtime.spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> scheduleSpinStep(runtime, step, total), 10L);
             return;
         }
         setSelector(runtime, RNG.nextInt(boardSize * boardSize));
@@ -804,6 +909,11 @@ public final class RouletteManager {
 
     private void updateHologram(StationRuntime runtime) {
         Location anchor = runtime.geometry(boardSize).centerAbove(plugin.getConfig().getDouble("roulette.hologram-height", 3.5));
+        double viewRange = plugin.getConfig().getDouble("roulette.hologram-view-range", 8.0D);
+        if (!hasNearbyHologramViewer(anchor, viewRange)) {
+            deleteHologram(runtime.station.key());
+            return;
+        }
         List<String> lines = linesFor(runtime);
         List<UUID> ids = holograms.get(runtime.station.key());
         pruneNearbyHologramDuplicates(anchor, ids);
@@ -812,6 +922,7 @@ public final class RouletteManager {
             return;
         }
         List<Double> yOffsets = computeLineOffsets(lines);
+        float viewRangeF = (float) viewRange;
         for (int i = 0; i < ids.size(); i++) {
             Entity entity = Bukkit.getEntity(ids.get(i));
             if (!(entity instanceof TextDisplay display)) {
@@ -819,6 +930,7 @@ public final class RouletteManager {
                 return;
             }
             display.teleport(anchor.clone().add(0, -yOffsets.get(i), 0));
+            display.setViewRange(viewRangeF);
             display.text(component(lines.get(i)));
         }
     }
@@ -827,6 +939,7 @@ public final class RouletteManager {
         deleteHologram(stationKey);
         purgeNearbyHolograms(anchor);
         List<Double> yOffsets = computeLineOffsets(lines);
+        float viewRange = (float) plugin.getConfig().getDouble("roulette.hologram-view-range", 8.0D);
         List<UUID> ids = new ArrayList<>();
         String stationTag = stationHoloTag(stationKey);
         for (int i = 0; i < lines.size(); i++) {
@@ -842,6 +955,7 @@ public final class RouletteManager {
                 spawned.setShadowed(false);
                 spawned.setDefaultBackground(false);
                 spawned.setLineWidth(Integer.MAX_VALUE);
+                spawned.setViewRange(viewRange);
                 spawned.text(component(lines.get(line)));
             });
             ids.add(display.getUniqueId());
@@ -878,7 +992,14 @@ public final class RouletteManager {
                             name = "Player";
                         }
                         RouletteBet bet = entry.getValue();
-                        lines.add("&f" + name + " &7- " + bet.color().colorCode() + bet.color().displayName() + " &6$" + MONEY.format(bet.amount()));
+                        double effectiveMult = effectiveMultiplier(bet.color());
+                        double potential = clampPayout(bet.amount() * effectiveMult);
+                        double profit = Math.max(0.0, potential - bet.amount());
+                        lines.add("&f" + name + " &7| " + bet.color().colorCode() + bet.color().displayName()
+                                + " &7| &e" + MONEY.format(effectiveMult) + "x"
+                                + " &7| &6$" + MONEY.format(bet.amount())
+                                + " &7-> &e$" + MONEY.format(potential)
+                                + " &7| &a+$" + MONEY.format(profit));
                     });
         }
         return lines;
@@ -891,6 +1012,43 @@ public final class RouletteManager {
             offsets.add(i * spacing);
         }
         return offsets;
+    }
+
+    private boolean hasNearbyPlayers(StationRuntime runtime) {
+        RouletteBoardGeometry geometry;
+        try {
+            geometry = runtime.geometry(boardSize);
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
+        Location center = geometry.centerAbove(0);
+        double halfExtent = (boardSize / 2.0D) + 1.0D;
+        double limit = halfExtent + Math.max(0.0D, activationDistanceFromFrame);
+        World world = center.getWorld();
+        if (world == null) {
+            return false;
+        }
+        for (Player player : world.getPlayers()) {
+            double dx = Math.abs(player.getLocation().getX() - center.getX());
+            double dz = Math.abs(player.getLocation().getZ() - center.getZ());
+            if (Math.max(dx, dz) <= limit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasNearbyHologramViewer(Location anchor, double range) {
+        if (anchor == null || anchor.getWorld() == null) {
+            return false;
+        }
+        double maxSq = range * range;
+        for (Player player : anchor.getWorld().getPlayers()) {
+            if (player.getLocation().distanceSquared(anchor) <= maxSq) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void deleteHologram(String stationKey) {
@@ -1073,6 +1231,7 @@ public final class RouletteManager {
         this.resultSeconds = Math.max(2, plugin.getConfig().getInt("roulette.result-seconds", 5));
         this.minBet = Math.max(0.01, plugin.getConfig().getDouble("roulette.min-bet", 1.0));
         this.maxBet = plugin.getConfig().getDouble("roulette.max-bet", -1.0);
+        this.activationDistanceFromFrame = Math.max(0.0, plugin.getConfig().getDouble("roulette.activation-distance-from-frame", 5.0));
         this.redMultiplier = Math.max(1.0, plugin.getConfig().getDouble("roulette.red-multiplier", 2.0));
         this.blackMultiplier = Math.max(1.0, plugin.getConfig().getDouble("roulette.black-multiplier", 2.0));
         this.greenMultiplier = Math.max(1.0, plugin.getConfig().getDouble("roulette.green-multiplier", 12.0));
@@ -1112,6 +1271,8 @@ public final class RouletteManager {
                         "roulette.hologram-line-spacing",
                         "roulette.hologram-title-gap",
                         "roulette.hologram-section-gap",
+                        "roulette.hologram-view-range",
+                        "roulette.activation-distance-from-frame",
                         "roulette.max-bet-distance",
                         "roulette.red-percent",
                         "roulette.black-percent",

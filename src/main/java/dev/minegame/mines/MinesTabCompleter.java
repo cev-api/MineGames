@@ -19,14 +19,17 @@ public final class MinesTabCompleter implements TabCompleter {
                 options.addAll(Arrays.asList("1", "3", "5", "7", "10", "12", "15", "19"));
                 return filterPrefix(args[0], options);
             }
-            if (args.length == 2 && !args[0].equalsIgnoreCase("cashout")) {
+            if (args.length == 2
+                    && !args[0].equalsIgnoreCase("cashout")
+                    ) {
                 return filterPrefix(args[1], Arrays.asList("10", "100", "1000"));
             }
             return List.of();
         }
         if (name.equals("roulette")) {
             if (args.length == 1) {
-                return filterPrefix(args[0], Arrays.asList("red", "black", "green"));
+                List<String> options = new ArrayList<>(Arrays.asList("red", "black", "green"));
+                return filterPrefix(args[0], options);
             }
             if (args.length == 2) {
                 return filterPrefix(args[1], Arrays.asList("1", "10", "100", "1000"));
@@ -35,7 +38,10 @@ public final class MinesTabCompleter implements TabCompleter {
         }
         if (name.equals("rouletteadmin")) {
             if (args.length == 1) {
-                return filterPrefix(args[0], Arrays.asList("create", "remove", "regen", "list", "set", "setframe", "setred", "setblack", "setgreen", "setselector", "casinoframe", "reload"));
+                return filterPrefix(args[0], Arrays.asList("create", "remove", "regen", "list", "set", "setframe", "setred", "setblack", "setgreen", "setselector", "casinoframe", "housebalance", "housewithdraw", "reload"));
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("housewithdraw")) {
+                return filterPrefix(args[1], Arrays.asList("all", "10", "100", "1000"));
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("casinoframe")) {
                 return filterPrefix(args[1], Arrays.asList(
@@ -89,8 +95,10 @@ public final class MinesTabCompleter implements TabCompleter {
                         "roulette.house-edge-percent",
                         "roulette.max-payout",
                         "roulette.max-bet-distance",
+                        "roulette.activation-distance-from-frame",
                         "roulette.hologram-height",
                         "roulette.hologram-line-spacing",
+                        "roulette.hologram-view-range",
                         "roulette.hologram-title-gap",
                         "roulette.hologram-section-gap",
                         "roulette.fireworks-per-winner",
@@ -115,8 +123,11 @@ public final class MinesTabCompleter implements TabCompleter {
         if (name.equals("minegameadmin") || name.equals("mineadmin")) {
             if (args.length == 1) {
                 return filterPrefix(args[0], Arrays.asList(
-                        "create", "remove", "regen", "list", "set", "setframe", "sethidden", "setsafe", "setmine", "holo", "debug", "casinoframe", "reload"
+                        "create", "remove", "regen", "list", "set", "setframe", "sethidden", "setsafe", "setmine", "holo", "debug", "casinoframe", "housebalance", "housewithdraw", "reload"
                 ));
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("housewithdraw")) {
+                return filterPrefix(args[1], Arrays.asList("all", "10", "100", "1000"));
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("casinoframe")) {
                 return filterPrefix(args[1], Arrays.asList(
@@ -173,8 +184,10 @@ public final class MinesTabCompleter implements TabCompleter {
                         "announcements.broadcast-cashout",
                         "announcements.broadcast-win",
                         "announcements.send-welcome-on-start",
+                        "casino-frame-activation-distance",
                         "hologram.enabled",
                         "hologram.line-spacing",
+                        "hologram.view-range",
                         "hologram.behind-beacon-distance",
                         "hologram.base-height"
                 ));
@@ -260,4 +273,5 @@ public final class MinesTabCompleter implements TabCompleter {
         }
         return out;
     }
+
 }

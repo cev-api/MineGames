@@ -78,6 +78,9 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 3. `/minegameadmin regen`
 4. `/minegameadmin list`
 5. `/minegameadmin reload`
+- House accounting:
+1. `/minegameadmin housebalance`
+2. `/minegameadmin housewithdraw <amount|all>`
 - Toggles:
 1. `/minegameadmin holo <on|off>`
 2. `/minegameadmin debug <on|off>`
@@ -101,6 +104,9 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 3. `/rouletteadmin regen`
 4. `/rouletteadmin list`
 5. `/rouletteadmin reload`
+- House accounting:
+1. `/rouletteadmin housebalance`
+2. `/rouletteadmin housewithdraw <amount|all>`
 - Global config:
 1. `/rouletteadmin set <path> <value>`
 - Per-station board cosmetics (or all stations):
@@ -133,6 +139,26 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 1. `roulette.*`
 2. `roulette-frame-animation.*`
 
+## Distance / Activation / Hologram Settings
+
+- Global casino frame activation distance (used by both game types):
+1. `casino-frame-activation-distance` (default `20.0`)
+
+- MineGame hologram visibility:
+1. `hologram.view-range`
+2. `hologram.behind-beacon-distance`
+3. `hologram.base-height`
+4. `hologram.line-spacing`
+
+- Roulette station activation + hologram visibility:
+1. `roulette.activation-distance-from-frame` (players must be near frame for active spinning)
+2. `roulette.max-bet-distance` (max distance to place bets when not standing directly on board)
+3. `roulette.hologram-view-range`
+4. `roulette.hologram-height`
+5. `roulette.hologram-line-spacing`
+6. `roulette.hologram-title-gap`
+7. `roulette.hologram-section-gap`
+
 ## Notes
 
 - `set ...` commands edit global defaults.
@@ -151,6 +177,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - `plugins/MineGames/roulette_stations.yml` (Roulette stations + overrides)
 - `plugins/MineGames/mines_restore.yml` (MineGame original-block snapshots for restore on station removal)
 - `plugins/MineGames/roulette_restore.yml` (Roulette original-block snapshots for restore on station removal)
+- `plugins/MineGames/house_balances.yml` (separate MineGame/Roulette house balance + wager/payout totals)
 
 ## License
 

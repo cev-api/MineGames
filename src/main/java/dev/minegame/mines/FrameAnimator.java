@@ -55,11 +55,15 @@ public final class FrameAnimator {
 
     private void animateTick() {
         tick++;
+        double activationDistance = Math.max(0.0, plugin.getConfig().getDouble("casino-frame-activation-distance", 20.0));
         for (StationData station : minesManager.stations()) {
             BoardGeometry geometry;
             try {
                 geometry = minesManager.geometryForStation(station);
             } catch (IllegalStateException ex) {
+                continue;
+            }
+            if (!hasNearbyPlayers(geometry, activationDistance)) {
                 continue;
             }
             List<BoardGeometry.FrameCell> cells = geometry.frameCells();
@@ -87,6 +91,24 @@ public final class FrameAnimator {
                 applyLightState(cell.block(), blockType, on);
             }
         }
+    }
+
+    private boolean hasNearbyPlayers(BoardGeometry geometry, double activationDistance) {
+        org.bukkit.block.Block center = geometry.topCenterFrameBlock();
+        org.bukkit.World world = center.getWorld();
+        if (world == null) {
+            return false;
+        }
+        double cx = center.getX() + 0.5;
+        double cy = center.getY() + 0.5;
+        double cz = center.getZ() + 0.5;
+        double maxSq = activationDistance * activationDistance;
+        for (org.bukkit.entity.Player player : world.getPlayers()) {
+            if (player.getLocation().distanceSquared(new org.bukkit.Location(world, cx, cy, cz)) <= maxSq) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int perimeterIndex(int col, int row, int width, int height) {

@@ -33,6 +33,7 @@ public final class MinesManager {
     private final Economy economy;
     private final StationStorage stationStorage;
     private final BlockSnapshotStorage restoreStorage;
+    private final HouseBalanceStorage houseBalanceStorage;
     private final Map<UUID, ActiveGame> activeByPlayer = new HashMap<>();
     private final Map<String, ActiveGame> activeByStation = new HashMap<>();
     private final Map<String, BukkitTask> resetTasksByStation = new HashMap<>();
@@ -60,11 +61,18 @@ public final class MinesManager {
     private boolean broadcastWin;
     private boolean sendWelcomeOnStart;
 
-    public MinesManager(MinegamePlugin plugin, Economy economy, StationStorage stationStorage, BlockSnapshotStorage restoreStorage) {
+    public MinesManager(
+            MinegamePlugin plugin,
+            Economy economy,
+            StationStorage stationStorage,
+            BlockSnapshotStorage restoreStorage,
+            HouseBalanceStorage houseBalanceStorage
+    ) {
         this.plugin = plugin;
         this.economy = economy;
         this.stationStorage = stationStorage;
         this.restoreStorage = restoreStorage;
+        this.houseBalanceStorage = houseBalanceStorage;
         loadConfigValues();
 
         for (StationData station : stationStorage.all()) {
@@ -313,6 +321,7 @@ public final class MinesManager {
             player.sendMessage(color("&cEconomy error: payout failed. Contact staff."));
             return;
         }
+        houseBalanceStorage.recordMinesResult(game.wager(), payout);
         revealMines(game);
         Location beacon = game.station().beaconLocation();
         if (beacon != null && beacon.getWorld() != null) {
@@ -630,6 +639,7 @@ public final class MinesManager {
     }
 
     private void loseGame(ActiveGame game, Player player, String messageKey) {
+        houseBalanceStorage.recordMinesResult(game.wager(), 0.0);
         player.sendMessage(color(replaceVars(messageKey, Map.of(
                 "%wager%", MONEY_FORMAT.format(game.wager())
         ))));
@@ -657,9 +667,12 @@ public final class MinesManager {
     private void winGame(ActiveGame game, Player player) {
         double payout = clampPayout(game.wager() * currentMultiplierFor(game));
         EconomyResponse deposit = economy.depositPlayer(player, payout);
+        double settledPayout = payout;
         if (!deposit.transactionSuccess()) {
+            settledPayout = 0.0;
             player.sendMessage(color("&cEconomy error: payout failed. Contact staff."));
         }
+        houseBalanceStorage.recordMinesResult(game.wager(), settledPayout);
         player.sendMessage(color(replaceVars("messages.won", Map.of(
                 "%payout%", MONEY_FORMAT.format(payout),
                 "%xmult%", MONEY_FORMAT.format(currentMultiplierFor(game))
@@ -900,8 +913,10 @@ public final class MinesManager {
                  "announcements.broadcast-cashout",
                  "announcements.broadcast-win",
                  "announcements.send-welcome-on-start",
+                 "casino-frame-activation-distance",
                  "hologram.enabled",
                  "hologram.line-spacing",
+                 "hologram.view-range",
                  "hologram.behind-beacon-distance",
                  "hologram.base-height" -> true;
             default -> false;
@@ -949,6 +964,14 @@ public final class MinesManager {
                 case "hologram.line-spacing" -> {
                     double value = Double.parseDouble(raw);
                     yield value > 0.0 ? value : null;
+                }
+                case "hologram.view-range" -> {
+                    double value = Double.parseDouble(raw);
+                    yield value > 0.0 ? value : null;
+                }
+                case "casino-frame-activation-distance" -> {
+                    double value = Double.parseDouble(raw);
+                    yield value >= 0.0 ? value : null;
                 }
                 case "hologram.behind-beacon-distance", "hologram.base-height" -> Double.parseDouble(raw);
                 case "effects.fireworks-on-win",
@@ -1064,6 +1087,58 @@ public final class MinesManager {
 
     private String prefixed(String message) {
         return titlePrefix + message;
+    }
+
+    public void showHouseBalance(Player player) {
+        double balance = houseBalanceStorage.minesBalance();
+        double wagered = houseBalanceStorage.minesTotalWagered();
+        double paid = houseBalanceStorage.minesTotalPayout();
+        double edge = wagered <= 0.0 ? 0.0 : ((wagered - paid) / wagered) * 100.0;
+        player.sendMessage(color(prefixed("&eHouse Balance: &a$" + MONEY_FORMAT.format(balance)
+                + " &7| &eEdge: &a" + MONEY_FORMAT.format(edge) + "%")));
+        player.sendMessage(color("&7Wagered: &f$" + MONEY_FORMAT.format(wagered)
+                + " &7| Paid: &f$" + MONEY_FORMAT.format(paid)));
+    }
+
+    public void withdrawHouseBalance(Player player, String rawAmount) {
+        if (!player.hasPermission("mine.admin")) {
+            player.sendMessage(color("&cNo permission."));
+            return;
+        }
+        double current = houseBalanceStorage.minesBalance();
+        if (current <= 0.0) {
+            player.sendMessage(color(prefixed("&cNo house balance available to withdraw.")));
+            return;
+        }
+        double wanted;
+        if (rawAmount.equalsIgnoreCase("all")) {
+            wanted = current;
+        } else {
+            try {
+                wanted = Double.parseDouble(rawAmount);
+            } catch (NumberFormatException ex) {
+                player.sendMessage(color("&cAmount must be a number or 'all'."));
+                return;
+            }
+            if (wanted <= 0.0) {
+                player.sendMessage(color("&cAmount must be greater than 0."));
+                return;
+            }
+        }
+
+        double withdrawn = houseBalanceStorage.withdrawMines(wanted);
+        if (withdrawn <= 0.0) {
+            player.sendMessage(color(prefixed("&cNothing to withdraw.")));
+            return;
+        }
+        EconomyResponse deposit = economy.depositPlayer(player, withdrawn);
+        if (!deposit.transactionSuccess()) {
+            houseBalanceStorage.refundMinesWithdrawal(withdrawn);
+            player.sendMessage(color("&cEconomy error: withdraw failed."));
+            return;
+        }
+        player.sendMessage(color(prefixed("&aWithdrew &6$" + MONEY_FORMAT.format(withdrawn) + " &afrom MineGame house balance.")));
+        player.sendMessage(color("&7Remaining MineGame house balance: &a$" + MONEY_FORMAT.format(houseBalanceStorage.minesBalance())));
     }
 
     private String prettyMaterial(Material material) {

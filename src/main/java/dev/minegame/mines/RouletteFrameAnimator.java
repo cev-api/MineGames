@@ -55,11 +55,15 @@ public final class RouletteFrameAnimator {
 
     private void animateTick() {
         tick++;
+        double activationDistance = Math.max(0.0, plugin.getConfig().getDouble("casino-frame-activation-distance", 20.0));
         for (RouletteStationData station : rouletteManager.stations()) {
             RouletteBoardGeometry geometry;
             try {
                 geometry = rouletteManager.geometryForStation(station);
             } catch (IllegalStateException ex) {
+                continue;
+            }
+            if (!hasNearbyPlayers(geometry, activationDistance)) {
                 continue;
             }
             boolean stationEnabled = rouletteManager.isFrameAnimationEnabled(station);
@@ -85,6 +89,21 @@ public final class RouletteFrameAnimator {
                 applyLightState(cell.block(), stationBlockType, on);
             }
         }
+    }
+
+    private boolean hasNearbyPlayers(RouletteBoardGeometry geometry, double activationDistance) {
+        org.bukkit.Location center = geometry.centerAbove(0.5);
+        org.bukkit.World world = center.getWorld();
+        if (world == null) {
+            return false;
+        }
+        double maxSq = activationDistance * activationDistance;
+        for (org.bukkit.entity.Player player : world.getPlayers()) {
+            if (player.getLocation().distanceSquared(center) <= maxSq) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int perimeterIndex(int col, int row, int width, int height) {

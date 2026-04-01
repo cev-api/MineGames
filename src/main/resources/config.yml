@@ -16,6 +16,8 @@ frame-animation:
   mode: idle_only
   interval-ticks: 6
 
+casino-frame-activation-distance: 20.0
+
 game:
   duration-seconds: 300
   house-edge-percent: 4.0
@@ -39,6 +41,7 @@ hologram:
   line-spacing: 0.28
   behind-beacon-distance: 1.4
   base-height: 4.2
+  view-range: 8.0
 
 roulette:
   board-size: 12
@@ -56,14 +59,16 @@ roulette:
   house-edge-percent: 4.0
   max-payout: -1
   max-bet-distance: 18.0
+  activation-distance-from-frame: 5.0
   hologram-height: 5
   hologram-line-spacing: 0.6
   hologram-title-gap: 0
   hologram-section-gap: 0
+  hologram-view-range: 8.0
   fireworks-per-winner: 1
   broadcast-top-winner: true
   blocks:
-    frame: STONE_BRICKSe
+    frame: STONE_BRICKS
     red: RED_CONCRETE
     black: BLACK_CONCRETE
     green: LIME_CONCRETE
@@ -75,9 +80,9 @@ roulette:
     invalid-bet: "&cInvalid bet amount."
     bet-closed: "&cBetting is closed."
     no-money: "&cYou do not have enough money."
-    bet-placed: "&aBet placed: &f%color% &6$%amount%"
-    win-private: "&aYou won &6$%payout% &aon %color%!"
-    lose-private: "&cYou lost &6$%amount% &con %color%."
+    bet-placed: "&aBet: &f%color% &7| &eW: &6$%amount% &7| &eM: &a%xmult%x &7| &eP: &6$%potential% &7| &a+$%profit%"
+    win-private: "&aWon: &6$%payout% &7(%xmult%x) &7| &a+$%profit% &7| &f%color%"
+    lose-private: "&cLost: &6$%amount% &7| &f%color%"
     top-winner-broadcast: "&6[Roulette] &f%player% won &a$%payout% &fon %color%!"
     created: "&aRoulette station created."
     removed: "&eRoulette station removed."

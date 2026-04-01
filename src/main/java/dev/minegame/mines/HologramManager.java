@@ -89,6 +89,11 @@ public final class HologramManager {
         if (anchor == null) {
             return;
         }
+        double viewRange = plugin.getConfig().getDouble("hologram.view-range", 8.0D);
+        if (!hasNearbyViewer(anchor, viewRange)) {
+            deleteHologram(station.key());
+            return;
+        }
         List<String> lines = linesFor(station);
         if (updateExisting(station.key(), anchor, lines)) {
             lastLinesByStation.put(station.key(), lines);
@@ -104,6 +109,7 @@ public final class HologramManager {
             return false;
         }
         double spacing = plugin.getConfig().getDouble("hologram.line-spacing", 0.28D);
+        float viewRange = (float) plugin.getConfig().getDouble("hologram.view-range", 8.0D);
         for (int i = 0; i < ids.size(); i++) {
             Entity entity = findDisplayEntity(anchor.getWorld(), ids.get(i));
             if (!(entity instanceof TextDisplay display)) {
@@ -113,6 +119,7 @@ public final class HologramManager {
                 return false;
             }
             display.teleport(anchor.clone().add(0, -i * spacing, 0));
+            display.setViewRange(viewRange);
             display.text(component(lines.get(i)));
         }
         return true;
@@ -123,6 +130,7 @@ public final class HologramManager {
         purgeNearbyAnchorDisplays(anchor);
         deleteHologram(stationKey);
         double spacing = plugin.getConfig().getDouble("hologram.line-spacing", 0.28D);
+        float viewRange = (float) plugin.getConfig().getDouble("hologram.view-range", 8.0D);
         List<UUID> ids = new ArrayList<>();
         String stationTag = stationTag(stationKey);
         for (int i = 0; i < lines.size(); i++) {
@@ -139,6 +147,7 @@ public final class HologramManager {
                 spawned.setShadowed(false);
                 spawned.setDefaultBackground(false);
                 spawned.setLineWidth(Integer.MAX_VALUE);
+                spawned.setViewRange(viewRange);
                 spawned.text(component(lines.get(lineIndex)));
             });
             ids.add(stand.getUniqueId());
@@ -279,5 +288,18 @@ public final class HologramManager {
 
     private String stationKeyFor(TextDisplay display) {
         return display.getPersistentDataContainer().get(stationKeyDataKey, PersistentDataType.STRING);
+    }
+
+    private boolean hasNearbyViewer(Location anchor, double range) {
+        if (anchor == null || anchor.getWorld() == null) {
+            return false;
+        }
+        double maxSq = range * range;
+        for (org.bukkit.entity.Player player : anchor.getWorld().getPlayers()) {
+            if (player.getLocation().distanceSquared(anchor) <= maxSq) {
+                return true;
+            }
+        }
+        return false;
     }
 }
