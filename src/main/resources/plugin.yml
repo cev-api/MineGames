@@ -1,0 +1,27 @@
+name: MineGames
+version: 1.0.0
+author: cev-api
+main: dev.minegame.mines.MinegamePlugin
+api-version: "1.21"
+depend:
+  - Vault
+commands:
+  minegame:
+    description: Start a mines game while standing on a beacon station.
+    usage: /minegame <mines 1-24> <wager>
+    aliases: [mine, mines]
+  minegameadmin:
+    description: Manage mines stations.
+    usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|reload>
+    aliases: [mineadmin]
+  roulette:
+    description: Place a roulette bet on the nearest roulette station.
+    usage: /roulette <red|black|green> <amount>
+  rouletteadmin:
+    description: Manage roulette stations.
+    usage: /rouletteadmin <create|remove|regen|list|set|casinoframe|reload>
+permissions:
+  mine.admin:
+    default: op
+  roulette.admin:
+    default: op

@@ -1,0 +1,36 @@
+# Maven
+/target/
+/.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ / JetBrains
+/.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+/.vscode/
+
+# Eclipse
+/.settings/
+/.project
+/.classpath
+/.factorypath
+
+# NetBeans
+/nbproject/private/
+/build/
+/dist/
+/nbbuild/
+/.nb-gradle/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs / temp
+*.log
+*.tmp
+*.swp
+*.swo

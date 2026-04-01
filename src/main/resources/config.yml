@@ -1,0 +1,124 @@
+board:
+  grid-size: 5
+  wall-distance: 4
+  frame-one-higher: true
+  station-block: BEACON
+  hidden-block: STONE
+  safe-reveal-block: DIAMOND_BLOCK
+  mine-reveal-block: TNT
+  frame-block: QUARTZ_BLOCK
+  reset-delay-seconds: 3
+
+frame-animation:
+  enabled: false
+  block: REDSTONE_LAMP
+  pattern: 1
+  mode: idle_only
+  interval-ticks: 6
+
+game:
+  duration-seconds: 300
+  house-edge-percent: 4.0
+  max-multiplier: 0
+  max-payout: -1
+  title-prefix: "&6[MineGame] &f"
+
+announcements:
+  broadcast-start: false
+  broadcast-cashout: false
+  broadcast-win: false
+  send-welcome-on-start: true
+
+effects:
+  fireworks-on-win: true
+  firework-count: 3
+  win-ding-count: 5
+
+hologram:
+  enabled: true
+  line-spacing: 0.28
+  behind-beacon-distance: 1.4
+  base-height: 4.2
+
+roulette:
+  board-size: 12
+  red-percent: 48.61
+  black-percent: 48.61
+  green-percent: 2.78
+  betting-seconds: 15
+  spin-seconds: 10
+  result-seconds: 5
+  min-bet: 1.0
+  max-bet: -1
+  red-multiplier: 2.0
+  black-multiplier: 2.0
+  green-multiplier: 35.0
+  house-edge-percent: 4.0
+  max-payout: -1
+  max-bet-distance: 18.0
+  hologram-height: 5
+  hologram-line-spacing: 0.6
+  hologram-title-gap: 0
+  hologram-section-gap: 0
+  fireworks-per-winner: 1
+  broadcast-top-winner: true
+  blocks:
+    frame: STONE_BRICKSe
+    red: RED_CONCRETE
+    black: BLACK_CONCRETE
+    green: LIME_CONCRETE
+    selector: QUARTZ_BLOCK
+  messages:
+    not-on-station: "&cStand on a roulette board/frame to use this."
+    not-near: "&cYou are not near a roulette station."
+    invalid-color: "&cUse red, black or green."
+    invalid-bet: "&cInvalid bet amount."
+    bet-closed: "&cBetting is closed."
+    no-money: "&cYou do not have enough money."
+    bet-placed: "&aBet placed: &f%color% &6$%amount%"
+    win-private: "&aYou won &6$%payout% &aon %color%!"
+    lose-private: "&cYou lost &6$%amount% &con %color%."
+    top-winner-broadcast: "&6[Roulette] &f%player% won &a$%payout% &fon %color%!"
+    created: "&aRoulette station created."
+    removed: "&eRoulette station removed."
+    regenerated: "&aRoulette station regenerated."
+    reloaded: "&aRoulette config reloaded."
+    config-invalid: "&cInvalid roulette config value/path."
+
+roulette-frame-animation:
+  enabled: false
+  block: REDSTONE_LAMP
+  pattern: 1
+  mode: always
+  interval-ticks: 6
+
+messages:
+  not-on-beacon: "&cStand on a beacon station to use this."
+  invalid-mines: "&cMines must be between 1 and %max%."
+  invalid-wager: "&cWager must be greater than 0."
+  no-money: "&cYou do not have enough money for that wager."
+  started: "&aGame started: &f%mines% mines, wager &6$%wager%"
+  started-broadcast: "&f%player% started a game with &6$%wager% &f(%mines% mines)"
+  welcome: "&fBreak blocks to reveal &a%safe_block%&f. Avoid the &c%mine_block%&f!"
+  progress: "&eRev: &a%revealed%&7/&a%target% &7| &eMulti: &a%xmult%x &7-> &e%xnext%x &7| &ePot: &6$%potential% &7-> &e$%next_potential%"
+  cashout: "&aCashed out for &6$%payout% &a(%xmult%x) &7| Profit: &a$%profit%"
+  cashout-broadcast: "&e%player% &fcashed out &6$%payout% &f(%xmult%x) | &7Profit: &a$%profit%"
+  cashout-none: "&cReveal at least 1 safe tile before cashing out."
+  not-playing: "&cYou are not currently in a mines game."
+  hit-mine: "&cBOOM! You hit a mine and lost &6$%wager%"
+  won: "&aYou cleared the board! Paid &6$%payout% &a(%xmult%x)"
+  won-broadcast: "&f%player% won &6$%payout% &f(%xmult%x) &7| Profit: &a$%profit% &7(%mines% mines)"
+  timeout: "&cTime ran out! You lost &6$%wager%"
+  station-busy: "&cThat station is already in use."
+  already-playing: "&cYou are already in a mines game."
+  hologram-enabled: "&aMineGame holograms enabled."
+  hologram-disabled: "&eMineGame holograms disabled."
+  reloaded: "&aMinegame config reloaded."
+  debug-on: "&aMineGame debug mode enabled. Mine locations will be revealed for your games."
+  debug-off: "&eMineGame debug mode disabled."
+  config-set: "&aSet &f%path% &ato &f%value%&a."
+  config-invalid-path: "&cThat config path cannot be changed in-game."
+  config-invalid-value: "&cInvalid value for &f%path%&c."
+  created: "&aStation created at this beacon."
+  removed: "&eStation removed from this beacon."
+  regenerated: "&aStation regenerated."
