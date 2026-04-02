@@ -86,6 +86,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 2. `/minegameadmin debug <on|off>`
 - Global config:
 1. `/minegameadmin set <path> <value>`
+2. `/minegameadmin set <path>` (shows current value)
 - Per-station cosmetics (or all stations):
 1. `/minegameadmin setframe [all] <BLOCK|reset>`
 2. `/minegameadmin sethidden [all] <BLOCK|reset>`
@@ -109,6 +110,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 2. `/rouletteadmin housewithdraw <amount|all>`
 - Global config:
 1. `/rouletteadmin set <path> <value>`
+2. `/rouletteadmin set <path>` (shows current value)
 - Per-station board cosmetics (or all stations):
 1. `/rouletteadmin setframe [all] <BLOCK|reset>`
 2. `/rouletteadmin setred [all] <BLOCK|reset>`
@@ -135,6 +137,10 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 5. `hologram.*`
 6. `messages.*`
 7. `frame-animation.*`
+- MineGame frame height toggle:
+1. `board.frame-one-higher`
+2. `true` = frame/grid one block above beacon
+3. `false` = frame/grid at beacon level
 - Roulette:
 1. `roulette.*`
 2. `roulette-frame-animation.*`
@@ -143,6 +149,8 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 
 - Global casino frame activation distance (used by both game types):
 1. `casino-frame-activation-distance` (default `20.0`)
+2. `frame-animation.interval-ticks` (MineGame frame animation speed)
+3. `roulette-frame-animation.interval-ticks` (Roulette frame animation speed)
 
 - MineGame hologram visibility:
 1. `hologram.view-range`
@@ -164,7 +172,10 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - `set ...` commands edit global defaults.
 - `setframe/setred/...` and `casinoframe` commands edit station overrides.
 - Adding `all` applies cosmetic override commands to every station of that game type.
-- Roulette color defaults are percent-based (`49.31 / 49.31 / 1.39`) and auto-scale with board size.
+- `housebalance`/`housewithdraw` are admin-only (`mine.admin` / `roulette.admin`).
+- `housewithdraw` pays the withdrawn amount directly to the admin executing the command.
+- MineGame board height is controlled by `board.frame-one-higher` (settable via `/minegameadmin set board.frame-one-higher <true|false>`).
+- Roulette color defaults are percent-based (`48.61 / 48.61 / 2.78`) and auto-scale with board size.
 - Changing Roulette selector block clears old selector blocks from the selector layer before placing new ones.
 - Removing MineGame/Roulette stations restores original world blocks for stations created on current versions (snapshot-based restore).
 - Roulette station creation anchors the board directly under the admin's feet (replaces floor blocks there).
