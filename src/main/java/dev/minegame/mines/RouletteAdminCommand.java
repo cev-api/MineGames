@@ -17,6 +17,11 @@ public final class RouletteAdminCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        boolean consoleReload = args.length > 0 && args[0].equalsIgnoreCase("reload") && !(sender instanceof Player);
+        if (consoleReload) {
+            rouletteManager.reloadConfig(sender);
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(rouletteManager.colorize(rouletteManager.text(
                     "messages.shared.only-players",

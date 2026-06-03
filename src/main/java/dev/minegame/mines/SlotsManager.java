@@ -31,6 +31,7 @@ import org.bukkit.block.data.type.Switch;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -108,7 +109,7 @@ public final class SlotsManager {
         clearAllHolograms();
     }
 
-    public void reloadConfig(Player requester) {
+    public void reloadConfig(CommandSender requester) {
         plugin.reloadConfig();
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();
@@ -1013,7 +1014,11 @@ public final class SlotsManager {
         return runtimes.values().stream()
                 .filter(runtime -> {
                     try {
-                        return runtime.geometry().centerAbove(2.5).distance(playerLoc) <= 4.5;
+                        Location center = runtime.geometry().centerAbove(2.5);
+                        return center.getWorld() != null
+                                && playerLoc.getWorld() != null
+                                && center.getWorld().equals(playerLoc.getWorld())
+                                && center.distance(playerLoc) <= 4.5;
                     } catch (IllegalStateException ex) {
                         return false;
                     }

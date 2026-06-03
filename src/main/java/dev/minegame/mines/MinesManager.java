@@ -20,6 +20,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
@@ -80,7 +81,7 @@ public final class MinesManager {
         }
     }
 
-    public void reloadConfig(Player requester) {
+    public void reloadConfig(CommandSender requester) {
         plugin.reloadConfig();
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();

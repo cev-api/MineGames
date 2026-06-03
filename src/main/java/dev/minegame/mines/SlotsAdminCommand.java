@@ -16,7 +16,12 @@ public final class SlotsAdminCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        boolean consoleReload = args.length > 0 && args[0].equalsIgnoreCase("reload") && !(sender instanceof Player);
         if (!(sender instanceof Player player)) {
+            if (consoleReload) {
+                slotsManager.reloadConfig(sender);
+                return true;
+            }
             sender.sendMessage(slotsManager.colorize(slotsManager.text(
                     "messages.shared.only-players",
                     "Only players can use this command."

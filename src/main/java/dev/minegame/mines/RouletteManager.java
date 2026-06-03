@@ -24,6 +24,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -117,7 +118,7 @@ public final class RouletteManager {
         clearAllHolograms();
     }
 
-    public void reloadConfig(Player requester) {
+    public void reloadConfig(CommandSender requester) {
         plugin.reloadConfig();
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();
@@ -1302,9 +1303,20 @@ public final class RouletteManager {
             return onBoard;
         }
         double maxDistance = plugin.getConfig().getDouble("roulette.max-bet-distance", 18.0);
+        Location playerLoc = player.getLocation();
         return runtimes.values().stream()
-                .min(Comparator.comparingDouble(rt -> rt.geometry(boardSizeFor(rt.station)).centerAbove(0).distanceSquared(player.getLocation())))
-                .filter(rt -> rt.geometry(boardSizeFor(rt.station)).centerAbove(0).distance(player.getLocation()) <= maxDistance)
+                .filter(rt -> {
+                    try {
+                        Location center = rt.geometry(boardSizeFor(rt.station)).centerAbove(0);
+                        return center.getWorld() != null
+                                && playerLoc.getWorld() != null
+                                && center.getWorld().equals(playerLoc.getWorld())
+                                && center.distance(playerLoc) <= maxDistance;
+                    } catch (IllegalStateException ignored) {
+                        return false;
+                    }
+                })
+                .min(Comparator.comparingDouble(rt -> rt.geometry(boardSizeFor(rt.station)).centerAbove(0).distanceSquared(playerLoc)))
                 .orElse(null);
     }
 
