@@ -130,15 +130,27 @@ public final class RouletteManager {
     }
 
     public void createStation(Player player) {
+        createStation(player, null);
+    }
+
+    public void createStation(Player player, Integer boardSize) {
         Location l = player.getLocation();
-        RouletteStationData station = new RouletteStationData(player.getWorld().getName(), l.getBlockX(), l.getBlockY() - 1, l.getBlockZ());
+        RouletteStationData station = new RouletteStationData(
+                player.getWorld().getName(), l.getBlockX(), l.getBlockY() - 1, l.getBlockZ(),
+                null, null, null, null, null, null, null, null, null, boardSize);
         captureStationBlocksIfNeeded(station);
         stationStorage.upsert(station);
         stationStorage.save();
         StationRuntime runtime = new StationRuntime(station);
         runtimes.put(station.key(), runtime);
         startRound(runtime);
-        player.sendMessage(color(text("messages.roulette.admin.created", "&aRoulette station created.")));
+        if (boardSize != null) {
+            player.sendMessage(color(replace(text("messages.roulette.admin.created-with-size",
+                    "&aRoulette station created with size &f%size%&a."), Map.of(
+                    "%size%", String.valueOf(boardSize)))));
+        } else {
+            player.sendMessage(color(text("messages.roulette.admin.created", "&aRoulette station created.")));
+        }
     }
 
     public void removeStation(Player player) {
@@ -179,15 +191,86 @@ public final class RouletteManager {
         player.sendMessage(color(replace(text("messages.roulette.admin.station-list-header", "&6[Roulette] &fStations: &e%count%"), Map.of(
                 "%count%", String.valueOf(runtimes.size())
         ))));
+        int num = 1;
         for (StationRuntime runtime : runtimes.values()) {
             RouletteStationData s = runtime.station;
-            player.sendMessage(color(replace(text("messages.roulette.admin.station-list-entry", "&7- &f%world% &7(%x%, %y%, %z%)"), Map.of(
+            player.sendMessage(color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
+                    "%num%", String.valueOf(num),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
                     "%z%", String.valueOf(s.z())
             ))));
+            num++;
         }
+    }
+
+    public void listStationsForRemove(Player player) {
+        if (runtimes.isEmpty()) {
+            player.sendMessage(color(text("messages.roulette.admin.no-stations", "&eNo roulette stations exist.")));
+            return;
+        }
+        player.sendMessage(color(text("messages.roulette.admin.remove-list-header",
+                "&6[Roulette] &eStations — use &f/rouletteadmin remove <number> &eto delete:")));
+        int num = 1;
+        for (StationRuntime runtime : runtimes.values()) {
+            RouletteStationData s = runtime.station;
+            player.sendMessage(color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
+                    "%num%", String.valueOf(num),
+                    "%world%", s.worldName(),
+                    "%x%", String.valueOf(s.x()),
+                    "%y%", String.valueOf(s.y()),
+                    "%z%", String.valueOf(s.z())
+            ))));
+            num++;
+        }
+    }
+
+    public void removeStationByIndex(Player player, int index) {
+        if (index < 1 || index > runtimes.size()) {
+            player.sendMessage(color(replace(text("messages.roulette.admin.remove-bad-index-out-of-range",
+                    "&cStation #%index% does not exist (1-%max%)."), Map.of(
+                    "%index%", String.valueOf(index),
+                    "%max%", String.valueOf(runtimes.size())
+            ))));
+            return;
+        }
+        StationRuntime runtime = null;
+        int i = 1;
+        for (StationRuntime rt : runtimes.values()) {
+            if (i == index) {
+                runtime = rt;
+                break;
+            }
+            i++;
+        }
+        if (runtime == null) {
+            return;
+        }
+        if (runtime.spinTask != null) {
+            runtime.spinTask.cancel();
+            runtime.spinTask = null;
+        }
+        runtime.phase = Phase.RESULT;
+        removeSelector(runtime);
+        if (restoreStorage.has(runtime.station.key())) {
+            restoreStorage.restoreAndForget(runtime.station.key());
+        } else {
+            removeBoard(runtime);
+        }
+        deleteHologram(runtime.station.key());
+        runtimes.remove(runtime.station.key());
+        stationStorage.remove(runtime.station.key());
+        stationStorage.save();
+        RouletteStationData s = runtime.station;
+        player.sendMessage(color(replace(text("messages.roulette.admin.removed",
+                "&eRoulette station #%num% at %world% (%x%, %y%, %z%) removed."), Map.of(
+                "%num%", String.valueOf(index),
+                "%world%", s.worldName(),
+                "%x%", String.valueOf(s.x()),
+                "%y%", String.valueOf(s.y()),
+                "%z%", String.valueOf(s.z())
+        ))));
     }
 
     public void setConfigValue(Player player, String pathInput, String valueInput) {
@@ -217,9 +300,34 @@ public final class RouletteManager {
             player.sendMessage(color(text("messages.roulette.gameplay.not-near", "&cYou are not near a roulette station.")));
             return;
         }
+        int oldBoardSize = this.boardSize;
         plugin.getConfig().set(path, parsed);
         plugin.saveConfig();
         loadConfig();
+        // If global board size changed, clear old boards for stations without explicit overrides
+        if (path.equals("roulette.board-size") && oldBoardSize != this.boardSize) {
+            for (StationRuntime runtime : runtimes.values()) {
+                RouletteStationData s = runtime.station;
+                if (s.boardSize() == null) {
+                    // Clear blocks using OLD global size
+                    RouletteBoardGeometry oldGeometry = new RouletteBoardGeometry(s, oldBoardSize);
+                    RouletteBoardGeometry newGeometry = new RouletteBoardGeometry(s, this.boardSize);
+                    Set<String> newKeys = new HashSet<>();
+                    for (Block b : newGeometry.boardBlocks()) newKeys.add(key(b));
+                    for (Block b : newGeometry.frameBlocks()) newKeys.add(key(b));
+                    for (Block block : oldGeometry.boardBlocks()) {
+                        if (!newKeys.contains(key(block))) block.setType(Material.AIR, false);
+                    }
+                    for (Block block : oldGeometry.frameBlocks()) {
+                        if (!newKeys.contains(key(block))) block.setType(Material.AIR, false);
+                    }
+                    if (restoreStorage.has(s.key())) {
+                        restoreStorage.restoreAndForget(s.key());
+                        captureStationBlocksIfNeeded(s);
+                    }
+                }
+            }
+        }
         for (StationRuntime runtime : runtimes.values()) {
             startRound(runtime);
         }
@@ -268,7 +376,7 @@ public final class RouletteManager {
     public void saveStation(RouletteStationData station, boolean regenerateBoard) {
         RouletteStationData previous = stationStorage.get(station.key());
         if (previous != null && !java.util.Objects.equals(previous.boardSize(), station.boardSize())) {
-            rebaselineStation(station);
+            rebaselineStation(station, previous);
         }
         stationStorage.upsert(station);
         stationStorage.save();
@@ -291,7 +399,7 @@ public final class RouletteManager {
         for (RouletteStationData station : stations) {
             RouletteStationData previous = stationStorage.get(station.key());
             if (previous != null && !java.util.Objects.equals(previous.boardSize(), station.boardSize())) {
-                rebaselineStation(station);
+                rebaselineStation(station, previous);
             }
             stationStorage.upsert(station);
         }
@@ -313,13 +421,32 @@ public final class RouletteManager {
         }
     }
 
-    private void rebaselineStation(RouletteStationData station) {
+    private void rebaselineStation(RouletteStationData station, RouletteStationData previous) {
+        // Clear old board area (using PREVIOUS geometry) since the restore snapshot
+        // only covers the area that was captured, not the full old board.
+        if (previous != null) {
+            StationRuntime prevRuntime = new StationRuntime(previous);
+            RouletteBoardGeometry oldGeometry = prevRuntime.geometry(boardSizeFor(previous));
+            // Only clear blocks that are in the OLD geometry but NOT in the NEW one
+            RouletteBoardGeometry newGeometry = new StationRuntime(station).geometry(boardSizeFor(station));
+            Set<String> newKeys = new HashSet<>();
+            for (Block b : newGeometry.boardBlocks()) newKeys.add(key(b));
+            for (Block b : newGeometry.frameBlocks()) newKeys.add(key(b));
+            for (Block block : oldGeometry.boardBlocks()) {
+                if (!newKeys.contains(key(block))) block.setType(Material.AIR, false);
+            }
+            for (Block block : oldGeometry.frameBlocks()) {
+                if (!newKeys.contains(key(block))) block.setType(Material.AIR, false);
+            }
+        }
         if (restoreStorage.has(station.key())) {
             restoreStorage.restoreAndForget(station.key());
-        } else {
-            removeBoard(new StationRuntime(station));
         }
         captureStationBlocksIfNeeded(station);
+    }
+
+    private String key(Block block) {
+        return block.getWorld().getName() + ":" + block.getX() + ":" + block.getY() + ":" + block.getZ();
     }
 
     public Collection<RouletteStationData> stations() {
@@ -519,7 +646,7 @@ public final class RouletteManager {
     }
 
     public RouletteBoardGeometry geometryForStation(RouletteStationData station) {
-        return new RouletteBoardGeometry(station, boardSize);
+        return new RouletteBoardGeometry(station, boardSizeFor(station));
     }
 
     public boolean isBettingPhase(RouletteStationData station) {
@@ -658,10 +785,11 @@ public final class RouletteManager {
     }
 
     private void beginSpin(StationRuntime runtime) {
+        int stationBoardSize = boardSizeFor(runtime.station);
         runtime.phase = Phase.SPINNING;
         runtime.secondsLeft = spinSeconds;
         runtime.resultLines.clear();
-        runtime.selectorIndex = RNG.nextInt(boardSize * boardSize);
+        runtime.selectorIndex = RNG.nextInt(stationBoardSize * stationBoardSize);
         setSelector(runtime, runtime.selectorIndex);
         startSpinAnimation(runtime);
     }
@@ -672,7 +800,8 @@ public final class RouletteManager {
             runtime.spinTask = null;
         }
         if (runtime.selectorIndex < 0) {
-            runtime.selectorIndex = RNG.nextInt(boardSize * boardSize);
+            int stationBoardSize = boardSizeFor(runtime.station);
+            runtime.selectorIndex = RNG.nextInt(stationBoardSize * stationBoardSize);
             setSelector(runtime, runtime.selectorIndex);
         }
 
@@ -852,14 +981,15 @@ public final class RouletteManager {
 
     private void applyWinWipe(StationRuntime runtime, RouletteColor win) {
         RouletteBoardGeometry g = runtime.geometry(boardSizeFor(runtime.station));
-        int max = boardSize;
+        int stationBoardSize = boardSizeFor(runtime.station);
+        int max = stationBoardSize;
         for (int r = 0; r <= max; r++) {
             int radius = r;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (int row = 0; row < boardSize; row++) {
-                    for (int col = 0; col < boardSize; col++) {
-                        int dx = Math.abs(col - boardSize / 2);
-                        int dz = Math.abs(row - boardSize / 2);
+                for (int row = 0; row < stationBoardSize; row++) {
+                    for (int col = 0; col < stationBoardSize; col++) {
+                        int dx = Math.abs(col - stationBoardSize / 2);
+                        int dz = Math.abs(row - stationBoardSize / 2);
                         if (dx + dz <= radius) {
                             g.cellBlock(col, row).setType(blockFor(runtime.station, win), false);
                         }
@@ -885,7 +1015,8 @@ public final class RouletteManager {
             runtime.spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> scheduleSpinStep(runtime, step, total), 10L);
             return;
         }
-        setSelector(runtime, RNG.nextInt(boardSize * boardSize));
+        int stationBoardSize = boardSizeFor(runtime.station);
+        setSelector(runtime, RNG.nextInt(stationBoardSize * stationBoardSize));
         double progress = (double) step / Math.max(1, total - 1);
         int delay = 2 + (int) Math.floor(progress * 8.0);
         runtime.spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> scheduleSpinStep(runtime, step + 1, total), delay);
@@ -921,7 +1052,8 @@ public final class RouletteManager {
 
     private void generatePattern(StationRuntime runtime) {
         runtime.pattern.clear();
-        int total = boardSize * boardSize;
+        int stationBoardSize = boardSizeFor(runtime.station);
+        int total = stationBoardSize * stationBoardSize;
         Map<Integer, RouletteColor> pattern = runtime.pattern;
 
         int[] counts = calculateColorCounts(total);
@@ -994,13 +1126,14 @@ public final class RouletteManager {
 
     private void renderBoard(StationRuntime runtime) {
         RouletteBoardGeometry g = runtime.geometry(boardSizeFor(runtime.station));
+        int stationBoardSize = boardSizeFor(runtime.station);
         Material stationFrameBlock = visualFrameBlock(runtime.station);
         for (Block frame : g.frameBlocks()) {
             frame.setType(stationFrameBlock, false);
         }
-        for (int row = 0; row < boardSize; row++) {
-            for (int col = 0; col < boardSize; col++) {
-                int idx = row * boardSize + col;
+        for (int row = 0; row < stationBoardSize; row++) {
+            for (int col = 0; col < stationBoardSize; col++) {
+                int idx = row * stationBoardSize + col;
                 g.cellBlock(col, row).setType(blockFor(runtime.station, runtime.pattern.getOrDefault(idx, RouletteColor.RED)), false);
             }
         }
@@ -1022,8 +1155,9 @@ public final class RouletteManager {
 
     private Block selectorBlockFor(StationRuntime runtime, int index) {
         RouletteBoardGeometry g = runtime.geometry(boardSizeFor(runtime.station));
-        int row = index / boardSize;
-        int col = index % boardSize;
+        int stationBoardSize = boardSizeFor(runtime.station);
+        int row = index / stationBoardSize;
+        int col = index % stationBoardSize;
         Block base = g.cellBlock(col, row);
         return base.getWorld().getBlockAt(base.getLocation().add(0, 1, 0));
     }
@@ -1175,7 +1309,8 @@ public final class RouletteManager {
             return false;
         }
         Location center = geometry.centerAbove(0);
-        double halfExtent = (boardSize / 2.0D) + 1.0D;
+        int stationBoardSize = boardSizeFor(runtime.station);
+        double halfExtent = (stationBoardSize / 2.0D) + 1.0D;
         double limit = halfExtent + Math.max(0.0D, activationDistanceFromFrame);
         World world = center.getWorld();
         if (world == null) {
@@ -1287,7 +1422,7 @@ public final class RouletteManager {
         if (restoreStorage.has(station.key())) {
             return;
         }
-        RouletteBoardGeometry geometry = new RouletteBoardGeometry(station, boardSize);
+        RouletteBoardGeometry geometry = new RouletteBoardGeometry(station, boardSizeFor(station));
         List<Block> affected = new ArrayList<>();
         affected.addAll(geometry.frameBlocks());
         affected.addAll(geometry.boardBlocks());

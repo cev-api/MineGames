@@ -86,7 +86,7 @@ public final class MinesManager {
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();
         reloadFromCurrentConfigOnly();
-        msg(requester, "messages.minegame.admin.reloaded");
+        requester.sendMessage(color(text("messages.minegame.admin.reloaded", "&aMineGame config reloaded.")));
     }
 
     public void reloadFromCurrentConfigOnly() {
@@ -133,6 +133,10 @@ public final class MinesManager {
     }
 
     public void createStation(Player player) {
+        createStation(player, null);
+    }
+
+    public void createStation(Player player, Integer boardSize) {
         Block beacon = player.getLocation().subtract(0, 1, 0).getBlock();
         if (beacon.getType() != stationBlock) {
             msg(player, "messages.minegame.gameplay.not-on-beacon");
@@ -145,14 +149,22 @@ public final class MinesManager {
                 beacon.getX(),
                 beacon.getY(),
                 beacon.getZ(),
-                facing
+                facing,
+                null, null, null, null, null, null, null, null,
+                boardSize
         );
         captureStationBlocksIfNeeded(station);
 
         stationStorage.upsert(station);
         stationStorage.save();
         regenerateBoard(station);
-        msg(player, "messages.minegame.admin.created");
+        if (boardSize != null) {
+            player.sendMessage(color(replaceVars("messages.minegame.admin.created-with-size", Map.of(
+                    "%size%", String.valueOf(boardSize)
+            ))));
+        } else {
+            msg(player, "messages.minegame.admin.created");
+        }
     }
 
     public void removeStation(Player player) {
@@ -194,21 +206,104 @@ public final class MinesManager {
         player.sendMessage(color(replaceVars("messages.minegame.admin.station-list-header", Map.of(
                 "%count%", String.valueOf(stationStorage.all().size())
         ))));
+        int num = 1;
         for (StationData station : stationStorage.all()) {
             player.sendMessage(color(replaceVars("messages.minegame.admin.station-list-entry", Map.of(
+                    "%num%", String.valueOf(num),
                     "%world%", station.worldName(),
                     "%x%", String.valueOf(station.x()),
                     "%y%", String.valueOf(station.y()),
                     "%z%", String.valueOf(station.z()),
                     "%facing%", station.facing().name()
             ))));
+            num++;
         }
     }
 
+    public void listStationsForRemove(Player player) {
+        Collection<StationData> all = stationStorage.all();
+        if (all.isEmpty()) {
+            player.sendMessage(color(text("messages.minegame.admin.no-stations", "&eNo mine stations exist.")));
+            return;
+        }
+        player.sendMessage(color(text("messages.minegame.admin.remove-list-header",
+                "&6[MineGame] &eStations — use &f/minegameadmin remove <number> &eto delete:")));
+        int num = 1;
+        for (StationData station : all) {
+            player.sendMessage(color(replaceVars("messages.minegame.admin.station-list-entry-numbered", Map.of(
+                    "%num%", String.valueOf(num),
+                    "%world%", station.worldName(),
+                    "%x%", String.valueOf(station.x()),
+                    "%y%", String.valueOf(station.y()),
+                    "%z%", String.valueOf(station.z()),
+                    "%facing%", station.facing().name()
+            ))));
+            num++;
+        }
+    }
+
+    public void removeStationByIndex(Player player, int index) {
+        Collection<StationData> all = stationStorage.all();
+        if (index < 1 || index > all.size()) {
+            player.sendMessage(color(replaceVars("messages.minegame.admin.remove-bad-index-out-of-range", Map.of(
+                    "%index%", String.valueOf(index),
+                    "%max%", String.valueOf(all.size())
+            ))));
+            return;
+        }
+        StationData station = null;
+        int i = 1;
+        for (StationData s : all) {
+            if (i == index) {
+                station = s;
+                break;
+            }
+            i++;
+        }
+        if (station == null) {
+            player.sendMessage(color(replaceVars("messages.minegame.admin.remove-bad-index-out-of-range", Map.of(
+                    "%index%", String.valueOf(index),
+                    "%max%", String.valueOf(all.size())
+            ))));
+            return;
+        }
+
+        BukkitTask pendingReset = resetTasksByStation.remove(station.key());
+        if (pendingReset != null) {
+            pendingReset.cancel();
+        }
+        ActiveGame activeGame = activeByStation.remove(station.key());
+        if (activeGame != null) {
+            cancelTicker(activeGame);
+            activeByPlayer.remove(activeGame.playerId());
+        }
+        if (restoreStorage.has(station.key())) {
+            restoreStorage.restoreAndForget(station.key());
+        } else {
+            clearBoard(station);
+        }
+        stationStorage.remove(station.key());
+        stationStorage.save();
+        player.sendMessage(color(replaceVars("messages.minegame.admin.removed-by-index", Map.of(
+                "%num%", String.valueOf(index),
+                "%world%", station.worldName(),
+                "%x%", String.valueOf(station.x()),
+                "%y%", String.valueOf(station.y()),
+                "%z%", String.valueOf(station.z())
+        ))));
+    }
+
     public void startGame(Player player, int mines, double wager) {
-        if (mines < 1 || mines > (gridSize * gridSize - 1)) {
+        StationData station = stationFromPlayerBeacon(player);
+        if (station == null) {
+            msg(player, "messages.minegame.gameplay.not-on-beacon");
+            return;
+        }
+        int stationBoardSize = boardSizeFor(station);
+        int maxMines = stationBoardSize * stationBoardSize - 1;
+        if (mines < 1 || mines > maxMines) {
             player.sendMessage(color(replaceVars("messages.minegame.gameplay.invalid-mines", Map.of(
-                    "%max%", String.valueOf(gridSize * gridSize - 1)
+                    "%max%", String.valueOf(maxMines)
             ))));
             return;
         }
@@ -221,11 +316,6 @@ public final class MinesManager {
             return;
         }
 
-        StationData station = stationFromPlayerBeacon(player);
-        if (station == null) {
-            msg(player, "messages.minegame.gameplay.not-on-beacon");
-            return;
-        }
         if (activeByStation.containsKey(station.key())) {
             msg(player, "messages.minegame.gameplay.station-busy");
             return;
@@ -246,7 +336,7 @@ public final class MinesManager {
         }
 
         regenerateBoard(station);
-        Set<Integer> mineIndices = generateMines(mines, gridSize * gridSize);
+        Set<Integer> mineIndices = generateMines(mines, stationBoardSize * stationBoardSize);
         ActiveGame game = new ActiveGame(player.getUniqueId(), station, mines, wager, mineIndices, durationSeconds);
         activeByPlayer.put(player.getUniqueId(), game);
         activeByStation.put(station.key(), game);
@@ -435,9 +525,34 @@ public final class MinesManager {
             return;
         }
 
+        int oldGridSize = this.gridSize;
         plugin.getConfig().set(path, parsed);
         plugin.saveConfig();
         loadConfigValues();
+
+        // If global grid size changed, clear old boards for stations without explicit overrides
+        if (path.equals("minegame.board.grid-size") && oldGridSize != this.gridSize) {
+            for (StationData station : stationStorage.all()) {
+                if (station.boardSize() == null) {
+                    StationData oldStation = station.withBoardSize(oldGridSize);
+                    BoardGeometry oldGeometry = geometry(oldStation);
+                    BoardGeometry newGeometry = geometry(station);
+                    Set<String> newKeys = new HashSet<>();
+                    for (Block b : newGeometry.frameBlocks()) newKeys.add(blockKey(b));
+                    for (Block b : newGeometry.gridBlocks()) newKeys.add(blockKey(b));
+                    for (Block block : oldGeometry.frameBlocks()) {
+                        if (!newKeys.contains(blockKey(block))) block.setType(Material.AIR, false);
+                    }
+                    for (Block block : oldGeometry.gridBlocks()) {
+                        if (!newKeys.contains(blockKey(block))) block.setType(Material.AIR, false);
+                    }
+                    if (restoreStorage.has(station.key())) {
+                        restoreStorage.restoreAndForget(station.key());
+                        captureStationBlocksIfNeeded(station);
+                    }
+                }
+            }
+        }
 
         if (path.startsWith("minegame.board.")) {
             for (StationData station : stationStorage.all()) {
@@ -472,7 +587,7 @@ public final class MinesManager {
         StationData previous = stationStorage.get(station.key());
         boolean resized = previous != null && !java.util.Objects.equals(previous.boardSize(), station.boardSize());
         if (resized) {
-            rebaselineStation(station);
+            rebaselineStation(station, previous);
         }
         stationStorage.upsert(station);
         stationStorage.save();
@@ -485,7 +600,7 @@ public final class MinesManager {
         for (StationData station : stations) {
             StationData previous = stationStorage.get(station.key());
             if (previous != null && !java.util.Objects.equals(previous.boardSize(), station.boardSize())) {
-                rebaselineStation(station);
+                rebaselineStation(station, previous);
             }
             stationStorage.upsert(station);
         }
@@ -506,7 +621,7 @@ public final class MinesManager {
     }
 
     public int safeTarget(ActiveGame game) {
-        return game.safeTargetCount(gridSize);
+        return game.safeTargetCount(boardSizeFor(currentStationState(game.station())));
     }
 
     public double currentMultiplierFor(ActiveGame game) {
@@ -545,7 +660,7 @@ public final class MinesManager {
         sendProgressActionbar(player, game);
         sendProgressChat(player, game);
 
-        if (game.revealedSafeCount() >= game.safeTargetCount(gridSize)) {
+        if (game.revealedSafeCount() >= safeTarget(game)) {
             winGame(game, player);
         }
     }
@@ -661,7 +776,7 @@ public final class MinesManager {
     }
 
     private void sendProgressActionbar(Player player, ActiveGame game) {
-        int safeTarget = game.safeTargetCount(gridSize);
+        int safeTarget = safeTarget(game);
         double multiplier = currentMultiplierFor(game);
         player.sendActionBar(color(replaceVars("messages.minegame.gameplay.progress-actionbar", Map.of(
                 "%seconds_left%", String.valueOf(game.secondsLeft()),
@@ -672,7 +787,7 @@ public final class MinesManager {
     }
 
     private void sendProgressChat(Player player, ActiveGame game) {
-        int safeTarget = game.safeTargetCount(gridSize);
+        int safeTarget = safeTarget(game);
         double multiplier = currentMultiplierFor(game);
         double nextMultiplier = nextMultiplierFor(game);
         double potential = potentialPayoutFor(game);
@@ -749,10 +864,11 @@ public final class MinesManager {
         StationData station = currentStationState(game.station());
         BoardGeometry geometry = geometry(station);
         Material stationMineRevealBlock = mineRevealBlockFor(station);
-        for (int i = 0; i < gridSize * gridSize; i++) {
+        int stationBoardSize = boardSizeFor(station);
+        for (int i = 0; i < stationBoardSize * stationBoardSize; i++) {
             if (game.isMine(i)) {
-                int row = i / gridSize;
-                int col = i % gridSize;
+                int row = i / stationBoardSize;
+                int col = i % stationBoardSize;
                 geometry.gridBlock(col, row).setType(stationMineRevealBlock, false);
             }
         }
@@ -766,7 +882,8 @@ public final class MinesManager {
         Material stationMineRevealBlock = mineRevealBlockFor(station);
         boolean showMinesForDebug = debugPlayers.contains(game.playerId());
         Set<Integer> revealedSafe = game.revealedSafeIndices();
-        for (int i = 0; i < gridSize * gridSize; i++) {
+        int stationBoardSize = boardSizeFor(station);
+        for (int i = 0; i < stationBoardSize * stationBoardSize; i++) {
             Material target;
             if (revealedSafe.contains(i)) {
                 target = stationSafeRevealBlock;
@@ -775,8 +892,8 @@ public final class MinesManager {
             } else {
                 target = stationHiddenBlock;
             }
-            int row = i / gridSize;
-            int col = i % gridSize;
+            int row = i / stationBoardSize;
+            int col = i % stationBoardSize;
             Block block = geometry.gridBlock(col, row);
             if (block.getType() != target) {
                 block.setType(target, false);
@@ -846,11 +963,30 @@ public final class MinesManager {
         restoreStorage.captureIfAbsent(station.key(), affected);
     }
 
-    private void rebaselineStation(StationData station) {
+    private void rebaselineStation(StationData station, StationData previous) {
+        // Clear old board area (using PREVIOUS geometry) since the restore snapshot
+        // only covers the area that was captured, not the full old board.
+        if (previous != null) {
+            BoardGeometry oldGeometry = geometry(previous);
+            BoardGeometry newGeometry = geometry(station);
+            Set<String> newKeys = new HashSet<>();
+            for (Block b : newGeometry.frameBlocks()) newKeys.add(blockKey(b));
+            for (Block b : newGeometry.gridBlocks()) newKeys.add(blockKey(b));
+            for (Block block : oldGeometry.frameBlocks()) {
+                if (!newKeys.contains(blockKey(block))) block.setType(Material.AIR, false);
+            }
+            for (Block block : oldGeometry.gridBlocks()) {
+                if (!newKeys.contains(blockKey(block))) block.setType(Material.AIR, false);
+            }
+        }
         if (restoreStorage.has(station.key())) {
             restoreStorage.restoreAndForget(station.key());
         }
         captureStationBlocksIfNeeded(station);
+    }
+
+    private String blockKey(Block block) {
+        return block.getWorld().getName() + ":" + block.getX() + ":" + block.getY() + ":" + block.getZ();
     }
 
     private void launchWinCelebration(StationData station) {
@@ -894,10 +1030,11 @@ public final class MinesManager {
     }
 
     private double multiplierForRevealed(ActiveGame game, int revealed) {
+        int stationBoardSize = boardSizeFor(currentStationState(game.station()));
         if (revealed <= 0) {
             return 1.0;
         }
-        int safeTarget = game.safeTargetCount(gridSize);
+        int safeTarget = game.safeTargetCount(stationBoardSize);
         if (safeTarget <= 0) {
             return 1.0;
         }
@@ -911,7 +1048,7 @@ public final class MinesManager {
             return 1.0D + (effectiveMax - 1.0D) * progress;
         }
 
-        int total = gridSize * gridSize;
+        int total = stationBoardSize * stationBoardSize;
         int safe = total - game.mines();
         int clampedRevealed = Math.min(revealed, safeTarget);
         double surviveProbability = combination(safe, clampedRevealed) / combination(total, clampedRevealed);

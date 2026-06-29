@@ -45,8 +45,36 @@ public final class RouletteAdminCommand implements CommandExecutor {
         }
 
         switch (args[0].toLowerCase()) {
-            case "create" -> rouletteManager.createStation(player);
-            case "remove" -> rouletteManager.removeStation(player);
+            case "create" -> {
+                if (args.length >= 2) {
+                    try {
+                        int size = Integer.parseInt(args[1]);
+                        rouletteManager.createStation(player, size);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(rouletteManager.colorize(rouletteManager.text(
+                                "messages.roulette.command.create-bad-size",
+                                "&cSize must be a number, e.g. /rouletteadmin create 4"
+                        )));
+                    }
+                } else {
+                    rouletteManager.createStation(player);
+                }
+            }
+            case "remove" -> {
+                if (args.length < 2) {
+                    rouletteManager.listStationsForRemove(player);
+                } else {
+                    try {
+                        int index = Integer.parseInt(args[1]);
+                        rouletteManager.removeStationByIndex(player, index);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(rouletteManager.colorize(rouletteManager.text(
+                                "messages.roulette.command.remove-bad-index",
+                                "&cUsage: /rouletteadmin remove <number> — get the number from /rouletteadmin remove"
+                        )));
+                    }
+                }
+            }
             case "regen" -> rouletteManager.regenerateStation(player);
             case "list" -> rouletteManager.listStations(player);
             case "set" -> {

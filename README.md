@@ -74,6 +74,33 @@ Join gifts are also supported. New players can receive a configurable welcome pa
 4. Matching the winning block pays out based on how many appear or which payline lands.
 5. The station can be customized with outer frame, inner frame, winning block, row count, and lever-side frame animation.
 
+## Winner Math & RNG
+
+1. **MineGame**
+   - Mine positions are generated once when the round starts with `Math.random()`, using `generateMines(mines, gridSize * gridSize)`.
+   - Mines are placed uniformly without replacement, so the same cell cannot become a mine twice.
+   - The player wins by revealing enough safe tiles before hitting a mine or timing out.
+   - Payout is based on revealed safe tiles. If `minegame.game.max-multiplier` is set above `0`, the multiplier scales linearly from `1x` up to the configured max. Otherwise, it uses the inverse of the survival probability with a house-edge factor applied.
+   - The survival math uses combinations: `surviveProbability = C(safe, revealed) / C(total, revealed)`.
+
+2. **Roulette**
+   - Each round builds a full board pattern from the configured color percentages: `roulette.red-percent`, `roulette.black-percent`, and `roulette.green-percent`.
+   - The counts are normalized to the board size, then green cells are assigned randomly and the remaining cells are shuffled with Java `Random`.
+   - When the spin resolves, the selector lands on a random board index and the color stored at that index becomes the winning color.
+   - Payout uses the configured color multiplier, then applies the house-edge factor: `effectiveMultiplier = rawMultiplier * (1 - houseEdgePercent / 100)`.
+
+3. **Slots**
+   - Each reel cell is filled independently from `slots.blocks.reel-options` using Java `Random`.
+   - The configured winning block is always included in the symbol pool, even if it is omitted from the config.
+   - A win is counted by matching the station’s `slots.blocks.winning` material across the final grid.
+   - For single-row stations, the total number of matching symbols is used directly. For two-row stations, the code checks top line, bottom line, diagonal, reverse diagonal, full screen, and mixed line patterns.
+   - Payout is `wager * multiplier`, where the multiplier comes from `slots.payout-multipliers` and is then scaled by station size and the detected pattern.
+
+4. **RNG notes**
+   - MineGame uses `Math.random()` for mine placement.
+   - Roulette and Slots use a shared `java.util.Random` instance.
+   - None of the games use seeded or cryptographic RNG, so results are game-random rather than replay-deterministic.
+
 ## Commands
 
 ### Player Commands

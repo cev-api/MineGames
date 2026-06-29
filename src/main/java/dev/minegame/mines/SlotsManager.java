@@ -6,9 +6,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -213,12 +215,14 @@ public final class SlotsManager {
         player.sendMessage(color(replace(text("messages.slots.admin.station-list-header", "&6[Slots] &fStations: &e%count%"), Map.of(
                 "%count%", String.valueOf(runtimes.size())
         ))));
+        int num = 1;
         for (SlotRuntime runtime : runtimes.values()) {
             SlotStationData s = runtime.station;
             player.sendMessage(color(replace(text(
                     "messages.slots.admin.station-list-entry",
-                    "&7- &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%"
+                    "&7%num%. &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%"
             ), Map.of(
+                    "%num%", String.valueOf(num),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
@@ -226,7 +230,80 @@ public final class SlotsManager {
                     "%width%", String.valueOf(s.reelCount()),
                     "%rows%", String.valueOf(s.rowCount())
             ))));
+            num++;
         }
+    }
+
+    public void listStationsForRemove(Player player) {
+        if (runtimes.isEmpty()) {
+            player.sendMessage(color(text("messages.slots.admin.no-stations", "&eNo slots stations exist.")));
+            return;
+        }
+        player.sendMessage(color(text("messages.slots.admin.remove-list-header",
+                "&6[Slots] &eStations — use &f/slotsadmin remove <number> &eto delete:")));
+        int num = 1;
+        for (SlotRuntime runtime : runtimes.values()) {
+            SlotStationData s = runtime.station;
+            player.sendMessage(color(replace(text(
+                    "messages.slots.admin.station-list-entry",
+                    "&7%num%. &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%"
+            ), Map.of(
+                    "%num%", String.valueOf(num),
+                    "%world%", s.worldName(),
+                    "%x%", String.valueOf(s.x()),
+                    "%y%", String.valueOf(s.y()),
+                    "%z%", String.valueOf(s.z()),
+                    "%width%", String.valueOf(s.reelCount()),
+                    "%rows%", String.valueOf(s.rowCount())
+            ))));
+            num++;
+        }
+    }
+
+    public void removeStationByIndex(Player player, int index) {
+        if (index < 1 || index > runtimes.size()) {
+            player.sendMessage(color(replace(text("messages.slots.admin.remove-bad-index-out-of-range",
+                    "&cStation #%index% does not exist (1-%max%)."), Map.of(
+                    "%index%", String.valueOf(index),
+                    "%max%", String.valueOf(runtimes.size())
+            ))));
+            return;
+        }
+        SlotRuntime runtime = null;
+        int i = 1;
+        for (SlotRuntime rt : runtimes.values()) {
+            if (i == index) {
+                runtime = rt;
+                break;
+            }
+            i++;
+        }
+        if (runtime == null) {
+            return;
+        }
+        if (runtime.spinTask != null) {
+            runtime.spinTask.cancel();
+        }
+        if (restoreStorage.has(runtime.station.key())) {
+            restoreStorage.restoreAndForget(runtime.station.key());
+        } else {
+            for (Block block : runtime.geometry().allBlocks()) {
+                block.setType(Material.AIR, false);
+            }
+        }
+        deleteHologram(runtime.station.key());
+        runtimes.remove(runtime.station.key());
+        stationStorage.remove(runtime.station.key());
+        stationStorage.save();
+        SlotStationData s = runtime.station;
+        player.sendMessage(color(replace(text("messages.slots.admin.removed",
+                "&eSlots station #%num% at %world% (%x%, %y%, %z%) removed."), Map.of(
+                "%num%", String.valueOf(index),
+                "%world%", s.worldName(),
+                "%x%", String.valueOf(s.x()),
+                "%y%", String.valueOf(s.y()),
+                "%z%", String.valueOf(s.z())
+        ))));
     }
 
     public void pullLever(Player player, Block leverBlock) {
@@ -1080,7 +1157,7 @@ public final class SlotsManager {
         boolean resized = previous != null
                 && (previous.reelCount() != station.reelCount() || previous.rowCount() != station.rowCount());
         if (resized) {
-            rebaselineStation(station);
+            rebaselineStation(station, previous);
         }
         stationStorage.upsert(station);
         stationStorage.save();
@@ -1104,7 +1181,7 @@ public final class SlotsManager {
             SlotStationData previous = stationStorage.get(station.key());
             if (previous != null
                     && (previous.reelCount() != station.reelCount() || previous.rowCount() != station.rowCount())) {
-                rebaselineStation(station);
+                rebaselineStation(station, previous);
             }
             stationStorage.upsert(station);
         }
@@ -1153,11 +1230,26 @@ public final class SlotsManager {
         return reelOptions.get(RNG.nextInt(reelOptions.size()));
     }
 
-    private void rebaselineStation(SlotStationData station) {
+    private void rebaselineStation(SlotStationData station, SlotStationData previous) {
+        // Clear old machine area (using PREVIOUS geometry) since the restore snapshot
+        // only covers the area that was captured, not the full old machine.
+        if (previous != null) {
+            SlotsGeometry oldGeometry = new SlotsGeometry(previous, leverPlacement);
+            SlotsGeometry newGeometry = new SlotsGeometry(station, leverPlacement);
+            Set<String> newKeys = new HashSet<>();
+            for (Block b : newGeometry.allBlocks()) newKeys.add(slotKey(b));
+            for (Block block : oldGeometry.allBlocks()) {
+                if (!newKeys.contains(slotKey(block))) block.setType(Material.AIR, false);
+            }
+        }
         if (restoreStorage.has(station.key())) {
             restoreStorage.restoreAndForget(station.key());
         }
         captureStationBlocksIfNeeded(station);
+    }
+
+    private String slotKey(Block block) {
+        return block.getWorld().getName() + ":" + block.getX() + ":" + block.getY() + ":" + block.getZ();
     }
 
     private void launchWinnerFireworks(SlotRuntime runtime, UUID playerId) {

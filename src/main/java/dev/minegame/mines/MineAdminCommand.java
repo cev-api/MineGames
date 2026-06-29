@@ -45,8 +45,36 @@ public final class MineAdminCommand implements CommandExecutor {
         }
 
         switch (args[0].toLowerCase()) {
-            case "create" -> minesManager.createStation(player);
-            case "remove" -> minesManager.removeStation(player);
+            case "create" -> {
+                if (args.length >= 2) {
+                    try {
+                        int size = Integer.parseInt(args[1]);
+                        minesManager.createStation(player, size);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(minesManager.colorize(minesManager.text(
+                                "messages.minegame.command.create-bad-size",
+                                "&cSize must be a number, e.g. /mineadmin create 4"
+                        )));
+                    }
+                } else {
+                    minesManager.createStation(player);
+                }
+            }
+            case "remove" -> {
+                if (args.length < 2) {
+                    minesManager.listStationsForRemove(player);
+                } else {
+                    try {
+                        int index = Integer.parseInt(args[1]);
+                        minesManager.removeStationByIndex(player, index);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(minesManager.colorize(minesManager.text(
+                                "messages.minegame.command.remove-bad-index",
+                                "&cUsage: /mineadmin remove <number> — get the number from /mineadmin remove"
+                        )));
+                    }
+                }
+            }
             case "regen" -> minesManager.regenerateStation(player);
             case "list" -> minesManager.listStations(player);
             case "setframe" -> {

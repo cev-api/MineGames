@@ -71,7 +71,21 @@ public final class SlotsAdminCommand implements CommandExecutor {
                 }
                 slotsManager.createStation(player, reelCount, rowCount);
             }
-            case "remove" -> slotsManager.removeStation(player);
+            case "remove" -> {
+                if (args.length < 2) {
+                    slotsManager.listStationsForRemove(player);
+                } else {
+                    try {
+                        int index = Integer.parseInt(args[1]);
+                        slotsManager.removeStationByIndex(player, index);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(slotsManager.colorize(slotsManager.text(
+                                "messages.slots.command.remove-bad-index",
+                                "&cUsage: /slotsadmin remove <number> — get the number from /slotsadmin remove"
+                        )));
+                    }
+                }
+            }
             case "regen" -> slotsManager.regenerateStation(player);
             case "list" -> slotsManager.listStations(player);
             case "set" -> {
