@@ -8,10 +8,12 @@ import org.bukkit.entity.Player;
 public final class SlotsAdminCommand implements CommandExecutor {
     private final SlotsManager slotsManager;
     private final SlotsCasinoFrameCommand slotsCasinoFrameCommand;
+    private final HologramPlacementController hologramPlacementController;
 
-    public SlotsAdminCommand(SlotsManager slotsManager, SlotsCasinoFrameCommand slotsCasinoFrameCommand) {
+    public SlotsAdminCommand(SlotsManager slotsManager, SlotsCasinoFrameCommand slotsCasinoFrameCommand, HologramPlacementController hologramPlacementController) {
         this.slotsManager = slotsManager;
         this.slotsCasinoFrameCommand = slotsCasinoFrameCommand;
+        this.hologramPlacementController = hologramPlacementController;
     }
 
     @Override
@@ -38,12 +40,13 @@ public final class SlotsAdminCommand implements CommandExecutor {
         if (args.length == 0) {
             player.sendMessage(slotsManager.colorize(slotsManager.text(
                     "messages.slots.command.admin-usage",
-                    "&eUsage: /slotsadmin <create|remove|regen|list|set|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/slotsadmin <command>\n&7create remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
             )));
             return true;
         }
 
         switch (args[0].toLowerCase()) {
+            case "hologramsign" -> handleHologramSign(player, args);
             case "create" -> {
                 int reelCount = 3;
                 int rowCount = 1;
@@ -98,14 +101,14 @@ public final class SlotsAdminCommand implements CommandExecutor {
                         ).replace("%path%", args[2]).replace("%value%", String.valueOf(current))));
                         player.sendMessage(slotsManager.colorize(slotsManager.text(
                                 "messages.slots.command.set-global-usage",
-                                "&eUsage: /slotsadmin set global <path> <value>"
+                                "&6Usage: &f /slotsadmin set global <path> <value>"
                         )));
                         return true;
                     }
                     if (args.length < 4) {
                         player.sendMessage(slotsManager.colorize(slotsManager.text(
                                 "messages.slots.command.set-global-usage",
-                                "&eUsage: /slotsadmin set global <path> <value>"
+                                "&6Usage: &f /slotsadmin set global <path> <value>"
                         )));
                         return true;
                     }
@@ -120,12 +123,12 @@ public final class SlotsAdminCommand implements CommandExecutor {
                     ).replace("%path%", args[1]).replace("%value%", String.valueOf(current))));
                     player.sendMessage(slotsManager.colorize(slotsManager.text(
                             "messages.slots.command.set-usage",
-                            "&eUsage: /slotsadmin set [global] <path> <value>"
+                            "&6Usage: &f /slotsadmin set [global] <path> <value>"
                     )));
                 } else if (args.length < 3) {
                     player.sendMessage(slotsManager.colorize(slotsManager.text(
                             "messages.slots.command.set-usage",
-                            "&eUsage: /slotsadmin set [global] <path> <value>"
+                            "&6Usage: &f /slotsadmin set [global] <path> <value>"
                     )));
                 } else {
                     slotsManager.setConfigValue(player, args[1], args[2]);
@@ -137,7 +140,7 @@ public final class SlotsAdminCommand implements CommandExecutor {
                 if (args.length <= materialArgIndex) {
                     player.sendMessage(slotsManager.colorize(slotsManager.text(
                             "messages.slots.command.board-usage",
-                            "&eUsage: /slotsadmin %command% [all] <BLOCK|reset>"
+                            "&6Usage: &f /slotsadmin %command% [all] <BLOCK|reset>"
                     ).replace("%command%", args[0].toLowerCase())));
                     return true;
                 }
@@ -168,7 +171,7 @@ public final class SlotsAdminCommand implements CommandExecutor {
                 if (args.length < 2) {
                     player.sendMessage(slotsManager.colorize(slotsManager.text(
                             "messages.slots.command.housewithdraw-usage",
-                            "&eUsage: /slotsadmin housewithdraw <amount|all>"
+                            "&6Usage: &f /slotsadmin housewithdraw <amount|all>"
                     )));
                 } else {
                     slotsManager.withdrawHouseBalance(player, args[1]);
@@ -177,9 +180,16 @@ public final class SlotsAdminCommand implements CommandExecutor {
             case "reload" -> slotsManager.reloadConfig(player);
             default -> player.sendMessage(slotsManager.colorize(slotsManager.text(
                     "messages.slots.command.admin-usage",
-                    "&eUsage: /slotsadmin <create|remove|regen|list|set|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/slotsadmin <command>\n&7create remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
             )));
         }
         return true;
+    }
+    private void handleHologramSign(Player player, String[] args) {
+        boolean remove = args.length >= 2 && args[1].equalsIgnoreCase("remove");
+        int numberArg = remove ? 2 : 1;
+        if (args.length <= numberArg) { player.sendMessage(slotsManager.colorize("&6Usage: &f /slotsadmin hologramsign [remove] <number>")); return; }
+        try { hologramPlacementController.arm(player, "slots", Integer.parseInt(args[numberArg]), remove || (args.length >= 3 && args[2].equalsIgnoreCase("remove"))); }
+        catch (NumberFormatException ex) { player.sendMessage(slotsManager.colorize("&cStation number must be a number.")); }
     }
 }

@@ -3,6 +3,7 @@ package dev.minegame.mines;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,6 +84,7 @@ public final class MinesManager {
 
     public void reloadConfig(CommandSender requester) {
         plugin.reloadConfig();
+        stationStorage.load();
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();
         reloadFromCurrentConfigOnly();
@@ -192,6 +194,32 @@ public final class MinesManager {
         msg(player, "messages.minegame.admin.removed");
     }
 
+    public void moveAllStations(Player player, String axis, int amount) {
+        int dx = 0, dy = 0, dz = 0;
+        switch (axis.toLowerCase()) {
+            case "x" -> dx = amount;
+            case "y" -> dy = amount;
+            case "z" -> dz = amount;
+            default -> { player.sendMessage(colorize("&cAxis must be x, y, or z.")); return; }
+        }
+        for (StationData station : new ArrayList<>(stationStorage.all())) {
+            if (activeByStation.containsKey(station.key())) {
+                player.sendMessage(colorize("&cStop active games before moving stations."));
+                return;
+            }
+        }
+        List<StationData> moved = new ArrayList<>();
+        for (StationData station : new ArrayList<>(stationStorage.all())) {
+            clearBoard(station);
+            stationStorage.remove(station.key());
+            StationData next = station.moved(dx, dy, dz);
+            stationStorage.upsert(next);
+            moved.add(next);
+        }
+        stationStorage.save();
+        for (StationData station : moved) regenerateBoard(station);
+        player.sendMessage(colorize("&aMoved all MineGame stations " + amount + " on " + axis.toUpperCase() + "."));
+    }
     public void regenerateStation(Player player) {
         StationData station = stationFromPlayerBeacon(player);
         if (station == null) {
@@ -208,14 +236,19 @@ public final class MinesManager {
         ))));
         int num = 1;
         for (StationData station : stationStorage.all()) {
-            player.sendMessage(color(replaceVars("messages.minegame.admin.station-list-entry", Map.of(
-                    "%num%", String.valueOf(num),
+            Location stationLocation = station.beaconLocation();
+            double distance = stationLocation != null && stationLocation.getWorld().equals(player.getWorld())
+                    ? player.getLocation().distance(stationLocation) : -1.0D;
+            String entry = color(replaceVars("messages.minegame.admin.station-list-entry", Map.of(
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("minegame", station.key())),
                     "%world%", station.worldName(),
                     "%x%", String.valueOf(station.x()),
                     "%y%", String.valueOf(station.y()),
                     "%z%", String.valueOf(station.z()),
                     "%facing%", station.facing().name()
-            ))));
+            )));
+            entry = entry.replace("§7- ", "");
+            player.sendMessage(color("&e" + plugin.stationNumberStorage().number("minegame", station.key()) + ". ") + entry + color(" &b[" + (distance < 0 ? "different world" : String.format(java.util.Locale.ROOT, "%.1f blocks away", distance)) + "]"));
             num++;
         }
     }
@@ -231,7 +264,7 @@ public final class MinesManager {
         int num = 1;
         for (StationData station : all) {
             player.sendMessage(color(replaceVars("messages.minegame.admin.station-list-entry-numbered", Map.of(
-                    "%num%", String.valueOf(num),
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("minegame", station.key())),
                     "%world%", station.worldName(),
                     "%x%", String.valueOf(station.x()),
                     "%y%", String.valueOf(station.y()),
@@ -244,7 +277,7 @@ public final class MinesManager {
 
     public void removeStationByIndex(Player player, int index) {
         Collection<StationData> all = stationStorage.all();
-        if (index < 1 || index > all.size()) {
+        if (index < 1) {
             player.sendMessage(color(replaceVars("messages.minegame.admin.remove-bad-index-out-of-range", Map.of(
                     "%index%", String.valueOf(index),
                     "%max%", String.valueOf(all.size())
@@ -252,13 +285,8 @@ public final class MinesManager {
             return;
         }
         StationData station = null;
-        int i = 1;
         for (StationData s : all) {
-            if (i == index) {
-                station = s;
-                break;
-            }
-            i++;
+            if (plugin.stationNumberStorage().number("minegame", s.key()) == index) { station = s; break; }
         }
         if (station == null) {
             player.sendMessage(color(replaceVars("messages.minegame.admin.remove-bad-index-out-of-range", Map.of(
@@ -1116,7 +1144,12 @@ public final class MinesManager {
                  "minegame.hologram.line-spacing",
                  "minegame.hologram.view-range",
                  "minegame.hologram.behind-beacon-distance",
-                 "minegame.hologram.base-height" -> true;
+                 "minegame.hologram.base-height",
+                 "minegame.hologram.affix-to-wall",
+                 "hologram.background-color",
+                 "hologram.background-opacity",
+                 "hologram.foreground-color",
+                 "hologram.foreground-opacity" -> true;
             default -> false;
         };
     }
@@ -1186,6 +1219,12 @@ public final class MinesManager {
                     yield value >= 0.0 ? value : null;
                 }
                 case "minegame.hologram.behind-beacon-distance", "minegame.hologram.base-height" -> Double.parseDouble(raw);
+                case "hologram.background-opacity", "hologram.foreground-opacity" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value >= 0 && value <= 255 ? value : null;
+                }
+                case "minegame.hologram.affix-to-wall" -> parseBoolean(raw);
+                case "hologram.background-color", "hologram.foreground-color" -> raw;
                 case "minegame.effects.fireworks-on-win",
                         "minegame.hologram.enabled",
                         "minegame.board.frame-one-higher",
@@ -1216,7 +1255,9 @@ public final class MinesManager {
 
     private String normalizeConfigPath(String rawPath) {
         String path = rawPath.toLowerCase();
-        return path.startsWith("minegame.") ? path : "minegame." + path;
+        return path.startsWith("minegame.") || path.equals("hologram.affix-to-wall")
+                || path.startsWith("roulette.") || path.startsWith("slots.")
+                ? path : "minegame." + path;
     }
 
     private Material parseMaterial(String raw, Material fallback) {
@@ -1307,6 +1348,7 @@ public final class MinesManager {
     }
 
     public String text(String path, String fallback) {
+        if (path.endsWith(".command.admin-usage")) return fallback;
         String value = messageTemplate(path);
         return value == null ? fallback : value;
     }

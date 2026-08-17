@@ -1,5 +1,5 @@
 name: MineGames
-version: 1.0.2
+version: 1.0.4
 author: cev-api
 main: dev.minegame.mines.MinegamePlugin
 api-version: "1.21"
@@ -12,7 +12,7 @@ commands:
     aliases: [mine, mines]
   minegameadmin:
     description: Manage mines stations.
-    usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|reload>
+    usage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|hologramsign|debug|casinoframe|reload>
     aliases: [mineadmin]
   roulette:
     description: Place a roulette bet on the nearest roulette station.
@@ -22,7 +22,7 @@ commands:
     usage: /rouletteadmin <create|remove|regen|list|set|casinoframe|reload>
   slotsadmin:
     description: Manage slots stations.
-    usage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
+    usage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set|hologramsign|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
   minegamesjoin:
     description: Configure the new-player join gift.
     usage: /minegamesjoin <true|false|set <amount>>

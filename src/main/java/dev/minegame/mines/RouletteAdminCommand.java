@@ -9,10 +9,12 @@ import org.bukkit.entity.Player;
 public final class RouletteAdminCommand implements CommandExecutor {
     private final RouletteManager rouletteManager;
     private final RouletteCasinoFrameCommand rouletteCasinoFrameCommand;
+    private final HologramPlacementController hologramPlacementController;
 
-    public RouletteAdminCommand(RouletteManager rouletteManager, RouletteCasinoFrameCommand rouletteCasinoFrameCommand) {
+    public RouletteAdminCommand(RouletteManager rouletteManager, RouletteCasinoFrameCommand rouletteCasinoFrameCommand, HologramPlacementController hologramPlacementController) {
         this.rouletteManager = rouletteManager;
         this.rouletteCasinoFrameCommand = rouletteCasinoFrameCommand;
+        this.hologramPlacementController = hologramPlacementController;
     }
 
     @Override
@@ -39,12 +41,13 @@ public final class RouletteAdminCommand implements CommandExecutor {
         if (args.length == 0) {
             player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                     "messages.roulette.command.admin-usage",
-                    "&eUsage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/rouletteadmin <command>\n&7create remove regen list set\n&7setframe setred setblack setgreen setselector\n&7casinoframe housebalance housewithdraw reload"
             )));
             return true;
         }
 
         switch (args[0].toLowerCase()) {
+            case "hologramsign" -> handleHologramSign(player, args);
             case "create" -> {
                 if (args.length >= 2) {
                     try {
@@ -87,14 +90,14 @@ public final class RouletteAdminCommand implements CommandExecutor {
                         ).replace("%path%", args[2]).replace("%value%", String.valueOf(current))));
                         player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                                 "messages.roulette.command.set-global-usage",
-                                "&eUsage: /rouletteadmin set global <path> <value>"
+                                "&6Usage: &f /rouletteadmin set global <path> <value>"
                         )));
                         return true;
                     }
                     if (args.length < 4) {
                         player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                                 "messages.roulette.command.set-global-usage",
-                                "&eUsage: /rouletteadmin set global <path> <value>"
+                                "&6Usage: &f /rouletteadmin set global <path> <value>"
                         )));
                         return true;
                     }
@@ -109,12 +112,12 @@ public final class RouletteAdminCommand implements CommandExecutor {
                     ).replace("%path%", args[1]).replace("%value%", String.valueOf(current))));
                     player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                             "messages.roulette.command.set-usage",
-                            "&eUsage: /rouletteadmin set [global] <path> <value>"
+                            "&6Usage: &f /rouletteadmin set [global] <path> <value>"
                     )));
                 } else if (args.length < 3) {
                     player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                             "messages.roulette.command.set-usage",
-                            "&eUsage: /rouletteadmin set [global] <path> <value>"
+                            "&6Usage: &f /rouletteadmin set [global] <path> <value>"
                     )));
                 } else {
                     rouletteManager.setConfigValue(player, args[1], args[2]);
@@ -132,7 +135,7 @@ public final class RouletteAdminCommand implements CommandExecutor {
                 if (args.length < 2) {
                     player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                             "messages.roulette.command.housewithdraw-usage",
-                            "&eUsage: /rouletteadmin housewithdraw <amount|all>"
+                            "&6Usage: &f /rouletteadmin housewithdraw <amount|all>"
                     )));
                 } else {
                     rouletteManager.withdrawHouseBalance(player, args[1]);
@@ -144,7 +147,7 @@ public final class RouletteAdminCommand implements CommandExecutor {
                 if (args.length <= materialArgIndex) {
                     player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                             "messages.roulette.command.board-usage",
-                            "&eUsage: /rouletteadmin %command% [all] <BLOCK|reset>"
+                            "&6Usage: &f /rouletteadmin %command% [all] <BLOCK|reset>"
                     ).replace("%command%", args[0].toLowerCase())));
                     return true;
                 }
@@ -168,9 +171,16 @@ public final class RouletteAdminCommand implements CommandExecutor {
             case "reload" -> rouletteManager.reloadConfig(player);
             default -> player.sendMessage(rouletteManager.colorize(rouletteManager.text(
                     "messages.roulette.command.admin-usage",
-                    "&eUsage: /rouletteadmin <create|remove|regen|list|set|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/rouletteadmin <command>\n&7create remove regen list set\n&7setframe setred setblack setgreen setselector\n&7casinoframe housebalance housewithdraw reload"
             )));
         }
         return true;
     }
-}
+
+    private void handleHologramSign(Player player, String[] args) {
+        boolean remove = args.length >= 2 && args[1].equalsIgnoreCase("remove");
+        int numberArg = remove ? 2 : 1;
+        if (args.length <= numberArg) { player.sendMessage(rouletteManager.colorize("&6Usage: &f /rouletteadmin hologramsign [remove] <number>")); return; }
+        try { hologramPlacementController.arm(player, "roulette", Integer.parseInt(args[numberArg]), remove || (args.length >= 3 && args[2].equalsIgnoreCase("remove"))); }
+        catch (NumberFormatException ex) { player.sendMessage(rouletteManager.colorize("&cStation number must be a number.")); }
+    }}

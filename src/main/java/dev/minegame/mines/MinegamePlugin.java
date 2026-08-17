@@ -28,6 +28,9 @@ public final class MinegamePlugin extends JavaPlugin {
     private FrameAnimator frameAnimator;
     private RouletteFrameAnimator rouletteFrameAnimator;
     private SlotsFrameAnimator slotsFrameAnimator;
+    private HologramPlacementStorage hologramPlacementStorage;
+    private HologramPlacementController hologramPlacementController;
+    private StationNumberStorage stationNumberStorage;
 
     @Override
     public void onEnable() {
@@ -59,11 +62,17 @@ public final class MinegamePlugin extends JavaPlugin {
         this.houseBalanceStorage = new HouseBalanceStorage(this);
         houseBalanceStorage.load();
 
+        this.stationNumberStorage = new StationNumberStorage(this);
+        stationNumberStorage.load();
+
+        this.hologramPlacementStorage = new HologramPlacementStorage(this);
+        hologramPlacementStorage.load();
         this.minesManager = new MinesManager(this, economy, stationStorage, minesRestoreStorage, houseBalanceStorage);
-        this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, rouletteRestoreStorage, houseBalanceStorage);
-        this.slotsManager = new SlotsManager(this, economy, slotStationStorage, slotsRestoreStorage, houseBalanceStorage);
+        this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, hologramPlacementStorage, rouletteRestoreStorage, houseBalanceStorage);
+        this.slotsManager = new SlotsManager(this, economy, slotStationStorage, hologramPlacementStorage, slotsRestoreStorage, houseBalanceStorage);
         this.joinGiftManager = new JoinGiftManager(this, economy, joinGiftStorage);
-        this.hologramManager = new HologramManager(this, minesManager);
+        this.hologramManager = new HologramManager(this, minesManager, hologramPlacementStorage);
+        this.hologramPlacementController = new HologramPlacementController(this, hologramPlacementStorage, minesManager, slotsManager, rouletteManager);
         this.frameAnimator = new FrameAnimator(this, minesManager);
         this.rouletteFrameAnimator = new RouletteFrameAnimator(this, rouletteManager);
         this.slotsFrameAnimator = new SlotsFrameAnimator(this, slotsManager);
@@ -81,17 +90,18 @@ public final class MinegamePlugin extends JavaPlugin {
 
         Objects.requireNonNull(getCommand("minegame")).setExecutor(new MineCommand(minesManager));
         Objects.requireNonNull(getCommand("minegame")).setTabCompleter(tabCompleter);
-        Objects.requireNonNull(getCommand("minegameadmin")).setExecutor(new MineAdminCommand(minesManager, casinoFrameCommand));
+        Objects.requireNonNull(getCommand("minegameadmin")).setExecutor(new MineAdminCommand(minesManager, casinoFrameCommand, hologramPlacementController));
         Objects.requireNonNull(getCommand("minegameadmin")).setTabCompleter(tabCompleter);
         Objects.requireNonNull(getCommand("roulette")).setExecutor(new RouletteCommand(rouletteManager));
         Objects.requireNonNull(getCommand("roulette")).setTabCompleter(tabCompleter);
-        Objects.requireNonNull(getCommand("rouletteadmin")).setExecutor(new RouletteAdminCommand(rouletteManager, rouletteCasinoFrameCommand));
+        Objects.requireNonNull(getCommand("rouletteadmin")).setExecutor(new RouletteAdminCommand(rouletteManager, rouletteCasinoFrameCommand, hologramPlacementController));
         Objects.requireNonNull(getCommand("rouletteadmin")).setTabCompleter(tabCompleter);
-        Objects.requireNonNull(getCommand("slotsadmin")).setExecutor(new SlotsAdminCommand(slotsManager, slotsCasinoFrameCommand));
+        Objects.requireNonNull(getCommand("slotsadmin")).setExecutor(new SlotsAdminCommand(slotsManager, slotsCasinoFrameCommand, hologramPlacementController));
         Objects.requireNonNull(getCommand("slotsadmin")).setTabCompleter(tabCompleter);
         Objects.requireNonNull(getCommand("minegamesjoin")).setExecutor(new MinegamesJoinCommand(joinGiftManager));
         Objects.requireNonNull(getCommand("minegamesjoin")).setTabCompleter(tabCompleter);
 
+        getServer().getPluginManager().registerEvents(hologramPlacementController.listener(), this);
         getServer().getPluginManager().registerEvents(new MinesListener(minesManager), this);
         getServer().getPluginManager().registerEvents(new PlayerExitListener(minesManager), this);
         getServer().getPluginManager().registerEvents(new RouletteListener(rouletteManager), this);
@@ -143,10 +153,18 @@ public final class MinegamePlugin extends JavaPlugin {
         if (slotsRestoreStorage != null) {
             slotsRestoreStorage.save();
         }
+        if (stationNumberStorage != null) {
+            stationNumberStorage.save();
+        }
+        if (hologramPlacementStorage != null) {
+            hologramPlacementStorage.save();
+        }
         if (houseBalanceStorage != null) {
             houseBalanceStorage.save();
         }
     }
+
+    public StationNumberStorage stationNumberStorage() { return stationNumberStorage; }
 
     private boolean setupEconomy() {
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);

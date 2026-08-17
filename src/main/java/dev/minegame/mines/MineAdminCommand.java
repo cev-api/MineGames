@@ -9,10 +9,12 @@ import org.bukkit.entity.Player;
 public final class MineAdminCommand implements CommandExecutor {
     private final MinesManager minesManager;
     private final CasinoFrameCommand casinoFrameCommand;
+    private final HologramPlacementController hologramPlacementController;
 
-    public MineAdminCommand(MinesManager minesManager, CasinoFrameCommand casinoFrameCommand) {
+    public MineAdminCommand(MinesManager minesManager, CasinoFrameCommand casinoFrameCommand, HologramPlacementController hologramPlacementController) {
         this.minesManager = minesManager;
         this.casinoFrameCommand = casinoFrameCommand;
+        this.hologramPlacementController = hologramPlacementController;
     }
 
     @Override
@@ -39,7 +41,7 @@ public final class MineAdminCommand implements CommandExecutor {
         if (args.length == 0) {
             player.sendMessage(minesManager.colorize(minesManager.text(
                     "messages.minegame.command.admin-usage",
-                    "&eUsage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/minegameadmin <command>\n&7create remove regen list set\n&7setframe sethidden setsafe setmine\n&7hologramsign holo debug casinoframe\n&7housebalance housewithdraw reload"
             )));
             return true;
         }
@@ -76,6 +78,11 @@ public final class MineAdminCommand implements CommandExecutor {
                 }
             }
             case "regen" -> minesManager.regenerateStation(player);
+            case "move" -> {
+                if (args.length != 3) player.sendMessage(minesManager.colorize("&6Usage: &f /minegameadmin move <x|y|z> <amount>"));
+                else try { minesManager.moveAllStations(player, args[1], Integer.parseInt(args[2])); }
+                catch (NumberFormatException ex) { player.sendMessage(minesManager.colorize("&cAmount must be a whole number.")); }
+            }
             case "list" -> minesManager.listStations(player);
             case "setframe" -> {
                 if (args.length < 2) {
@@ -85,7 +92,7 @@ public final class MineAdminCommand implements CommandExecutor {
                     ).replace("%value%", String.valueOf(minesManager.getCurrentConfigValue("board.frame-block")))));
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.setframe-usage",
-                            "&eUsage: /minegameadmin setframe <block> | /minegameadmin setframe reset"
+                            "&6Usage: &f /minegameadmin setframe <block> | /minegameadmin setframe reset"
                     )));
                 } else {
                     handleBoardMaterialCommand(player, args, "setframe");
@@ -99,7 +106,7 @@ public final class MineAdminCommand implements CommandExecutor {
                     ).replace("%value%", String.valueOf(minesManager.getCurrentConfigValue("board.hidden-block")))));
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.sethidden-usage",
-                            "&eUsage: /minegameadmin sethidden <block> | /minegameadmin sethidden reset"
+                            "&6Usage: &f /minegameadmin sethidden <block> | /minegameadmin sethidden reset"
                     )));
                 } else {
                     handleBoardMaterialCommand(player, args, "sethidden");
@@ -113,7 +120,7 @@ public final class MineAdminCommand implements CommandExecutor {
                     ).replace("%value%", String.valueOf(minesManager.getCurrentConfigValue("board.safe-reveal-block")))));
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.setsafe-usage",
-                            "&eUsage: /minegameadmin setsafe <block> | /minegameadmin setsafe reset"
+                            "&6Usage: &f /minegameadmin setsafe <block> | /minegameadmin setsafe reset"
                     )));
                 } else {
                     handleBoardMaterialCommand(player, args, "setsafe");
@@ -127,7 +134,7 @@ public final class MineAdminCommand implements CommandExecutor {
                     ).replace("%value%", String.valueOf(minesManager.getCurrentConfigValue("board.mine-reveal-block")))));
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.setmine-usage",
-                            "&eUsage: /minegameadmin setmine <block> | /minegameadmin setmine reset"
+                            "&6Usage: &f /minegameadmin setmine <block> | /minegameadmin setmine reset"
                     )));
                 } else {
                     handleBoardMaterialCommand(player, args, "setmine");
@@ -143,14 +150,14 @@ public final class MineAdminCommand implements CommandExecutor {
                         ).replace("%path%", args[2]).replace("%value%", String.valueOf(current))));
                         player.sendMessage(minesManager.colorize(minesManager.text(
                                 "messages.minegame.command.set-global-usage",
-                                "&eUsage: /minegameadmin set global <path> <value>"
+                                "&6Usage: &f /minegameadmin set global <path> <value>"
                         )));
                         return true;
                     }
                     if (args.length < 4) {
                         player.sendMessage(minesManager.colorize(minesManager.text(
                                 "messages.minegame.command.set-global-usage",
-                                "&eUsage: /minegameadmin set global <path> <value>"
+                                "&6Usage: &f /minegameadmin set global <path> <value>"
                         )));
                         return true;
                     }
@@ -163,22 +170,23 @@ public final class MineAdminCommand implements CommandExecutor {
                     ).replace("%path%", args[1]).replace("%value%", String.valueOf(current))));
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.set-usage",
-                            "&eUsage: /minegameadmin set [global] <path> <value>"
+                            "&6Usage: &f /minegameadmin set [global] <path> <value>"
                     )));
                 } else if (args.length < 3) {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.set-usage",
-                            "&eUsage: /minegameadmin set [global] <path> <value>"
+                            "&6Usage: &f /minegameadmin set [global] <path> <value>"
                     )));
                 } else {
                     minesManager.setConfigValue(player, args[1], args[2]);
                 }
             }
+            case "hologramsign" -> handleHologramSign(player, args);
             case "holo", "hologram" -> {
                 if (args.length < 2) {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.holo-usage",
-                            "&eUsage: /minegameadmin holo <on|off>"
+                            "&6Usage: &f /minegameadmin holo <on|off>"
                     )));
                 } else if (args[1].equalsIgnoreCase("on")) {
                     minesManager.setHologramsEnabled(player, true);
@@ -187,7 +195,7 @@ public final class MineAdminCommand implements CommandExecutor {
                 } else {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.holo-usage",
-                            "&eUsage: /minegameadmin holo <on|off>"
+                            "&6Usage: &f /minegameadmin holo <on|off>"
                     )));
                 }
             }
@@ -195,7 +203,7 @@ public final class MineAdminCommand implements CommandExecutor {
                 if (args.length < 2) {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.debug-usage",
-                            "&eUsage: /minegameadmin debug <on|off>"
+                            "&6Usage: &f /minegameadmin debug <on|off>"
                     )));
                 } else if (args[1].equalsIgnoreCase("on")) {
                     minesManager.setDebugMode(player, true);
@@ -204,7 +212,7 @@ public final class MineAdminCommand implements CommandExecutor {
                 } else {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.debug-usage",
-                            "&eUsage: /minegameadmin debug <on|off>"
+                            "&6Usage: &f /minegameadmin debug <on|off>"
                     )));
                 }
             }
@@ -220,7 +228,7 @@ public final class MineAdminCommand implements CommandExecutor {
                 if (args.length < 2) {
                     player.sendMessage(minesManager.colorize(minesManager.text(
                             "messages.minegame.command.housewithdraw-usage",
-                            "&eUsage: /minegameadmin housewithdraw <amount|all>"
+                            "&6Usage: &f /minegameadmin housewithdraw <amount|all>"
                     )));
                 } else {
                     minesManager.withdrawHouseBalance(player, args[1]);
@@ -229,7 +237,7 @@ public final class MineAdminCommand implements CommandExecutor {
             case "reload" -> minesManager.reloadConfig(player);
             default -> player.sendMessage(minesManager.colorize(minesManager.text(
                     "messages.minegame.command.admin-usage",
-                    "&eUsage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>"
+                    "&6Usage: &f/minegameadmin <command>\n&7create remove regen list set\n&7setframe sethidden setsafe setmine\n&7hologramsign holo debug casinoframe\n&7housebalance housewithdraw reload"
             )));
         }
         return true;
@@ -249,7 +257,7 @@ public final class MineAdminCommand implements CommandExecutor {
             if (args.length < 3) {
                 player.sendMessage(minesManager.colorize(minesManager.text(
                         "messages.minegame.command.board-all-usage",
-                        "&eUsage: /minegameadmin %type% <block>"
+                        "&6Usage: &f /minegameadmin %type% <block>"
                 ).replace("%type%", type)));
                 return;
             }
@@ -269,5 +277,12 @@ public final class MineAdminCommand implements CommandExecutor {
                     "&cUnknown material command."
             )));
         }
+    }
+    private void handleHologramSign(Player player, String[] args) {
+        boolean remove = args.length >= 2 && args[1].equalsIgnoreCase("remove");
+        int numberArg = remove ? 2 : 1;
+        if (args.length <= numberArg) { player.sendMessage(minesManager.colorize("&6Usage: &f /minegameadmin hologramsign [remove] <number>")); return; }
+        try { hologramPlacementController.arm(player, "minegame", Integer.parseInt(args[numberArg]), remove || (args.length >= 3 && args[2].equalsIgnoreCase("remove"))); }
+        catch (NumberFormatException ex) { player.sendMessage(minesManager.colorize("&cStation number must be a number.")); }
     }
 }

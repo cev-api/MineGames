@@ -29,7 +29,7 @@ public final class HologramManager {
 
     private static final DecimalFormat MONEY = new DecimalFormat("0.00");
     private static final DecimalFormat MULT = new DecimalFormat("0.000");
-    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
+    static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
     private static final String HOLOGRAM_STATION_TAG_PREFIX = "minegame_holo_station_";
 
     private final MinegamePlugin plugin;
@@ -37,11 +37,13 @@ public final class HologramManager {
     private final Map<String, List<UUID>> standIdsByStation = new HashMap<>();
     private final Map<String, List<String>> lastLinesByStation = new HashMap<>();
     private final NamespacedKey stationKeyDataKey;
+    private final HologramPlacementStorage placementStorage;
     private BukkitTask task;
 
-    public HologramManager(MinegamePlugin plugin, MinesManager minesManager) {
+    public HologramManager(MinegamePlugin plugin, MinesManager minesManager, HologramPlacementStorage placementStorage) {
         this.plugin = plugin;
         this.minesManager = minesManager;
+        this.placementStorage = placementStorage;
         this.stationKeyDataKey = new NamespacedKey(plugin, "station_key");
     }
 
@@ -119,8 +121,12 @@ public final class HologramManager {
                 return false;
             }
             display.teleport(anchor.clone().add(0, -i * spacing, 0));
+            display.setRotation(anchor.getYaw(), anchor.getPitch());
+            display.setBillboard(placementStorage.get("minegame", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
+            display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
             display.setViewRange(viewRange);
-            display.text(component(lines.get(i)));
+            HologramStyle.apply(plugin, display);
+            display.text(HologramStyle.text(plugin, lines.get(i)));
         }
         return true;
     }
@@ -142,13 +148,14 @@ public final class HologramManager {
                 spawned.addScoreboardTag(HOLOGRAM_TAG);
                 spawned.addScoreboardTag(stationTag);
                 spawned.getPersistentDataContainer().set(stationKeyDataKey, PersistentDataType.STRING, stationKey);
-                spawned.setBillboard(Display.Billboard.CENTER);
-                spawned.setSeeThrough(true);
+                spawned.setBillboard(placementStorage.get("minegame", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
+                spawned.setRotation(anchor.getYaw(), anchor.getPitch());
+                spawned.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
                 spawned.setShadowed(false);
-                spawned.setDefaultBackground(false);
+                HologramStyle.apply(plugin, spawned);
                 spawned.setLineWidth(Integer.MAX_VALUE);
                 spawned.setViewRange(viewRange);
-                spawned.text(component(lines.get(lineIndex)));
+                spawned.text(HologramStyle.text(plugin, lines.get(lineIndex)));
             });
             ids.add(stand.getUniqueId());
         }
@@ -215,11 +222,16 @@ public final class HologramManager {
             return null;
         }
         Vector forward = faceToVector(station.facing());
-        double backDistance = plugin.getConfig().getDouble("minegame.hologram.behind-beacon-distance", 1.4D);
-        double baseHeight = plugin.getConfig().getDouble("minegame.hologram.base-height", 4.2D);
-        return beacon.clone()
-                .add(0.5, baseHeight, 0.5)
-                .add(forward.multiply(-backDistance));
+        Location placed = placementStorage.get("minegame", station.key());
+        if (placed != null) return placed;
+        if (!plugin.getConfig().getBoolean("minegame.hologram.affix-to-wall", false)) {
+            return beacon.clone().add(0.5, 2.2, 0.5);
+        }
+        int wallDistance = plugin.getConfig().getInt("minegame.board.wall-distance", 4);
+        int gridSize = plugin.getConfig().getInt("minegame.board.grid-size", 5);
+        int frameOffset = plugin.getConfig().getBoolean("minegame.board.frame-one-higher", true) ? 1 : 0;
+        double wallHeight = 2.0D + gridSize + frameOffset;
+        return beacon.clone().add(0.5, wallHeight, 0.5).add(forward.multiply(wallDistance - 0.25D));
     }
 
     private Vector faceToVector(BlockFace face) {
@@ -277,7 +289,7 @@ public final class HologramManager {
     }
 
     private Component component(String text) {
-        return LEGACY.deserialize(text);
+        return HologramStyle.text(plugin, text);
     }
 
     private void purgeDisplaysByStationKey(String stationKey) {

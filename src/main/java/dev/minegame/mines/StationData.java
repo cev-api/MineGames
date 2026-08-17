@@ -61,6 +61,11 @@ public record StationData(
         return new Location(world, x, y, z);
     }
 
+    public StationData moved(int dx, int dy, int dz) {
+        return new StationData(worldName, x + dx, y + dy, z + dz, facing,
+                boardHiddenBlock, boardSafeRevealBlock, boardMineRevealBlock, boardFrameBlock,
+                frameAnimEnabled, frameAnimBlock, frameAnimPattern, frameAnimMode, boardSize);
+    }
     public StationData withFrameAnimation(Boolean enabled, String block, Integer pattern, String mode) {
         return new StationData(
                 worldName,

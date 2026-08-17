@@ -44,6 +44,7 @@ public final class RouletteManager {
     private final MinegamePlugin plugin;
     private final Economy economy;
     private final RouletteStationStorage stationStorage;
+    private final HologramPlacementStorage placementStorage;
     private final BlockSnapshotStorage restoreStorage;
     private final HouseBalanceStorage houseBalanceStorage;
     private final Map<String, StationRuntime> runtimes = new HashMap<>();
@@ -79,12 +80,14 @@ public final class RouletteManager {
             MinegamePlugin plugin,
             Economy economy,
             RouletteStationStorage stationStorage,
+            HologramPlacementStorage placementStorage,
             BlockSnapshotStorage restoreStorage,
             HouseBalanceStorage houseBalanceStorage
     ) {
         this.plugin = plugin;
         this.economy = economy;
         this.stationStorage = stationStorage;
+        this.placementStorage = placementStorage;
         this.restoreStorage = restoreStorage;
         this.houseBalanceStorage = houseBalanceStorage;
         loadConfig();
@@ -194,13 +197,18 @@ public final class RouletteManager {
         int num = 1;
         for (StationRuntime runtime : runtimes.values()) {
             RouletteStationData s = runtime.station;
-            player.sendMessage(color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
-                    "%num%", String.valueOf(num),
+            Location stationLocation = s.centerLocation();
+            double distance = stationLocation != null && stationLocation.getWorld().equals(player.getWorld())
+                    ? player.getLocation().distance(stationLocation) : -1.0D;
+            String entry = color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("roulette", s.key())),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
                     "%z%", String.valueOf(s.z())
-            ))));
+            )));
+            entry = entry.replace("§7- ", "");
+            player.sendMessage(color("&e" + plugin.stationNumberStorage().number("roulette", s.key()) + ". ") + entry + color(" &b[" + (distance < 0 ? "different world" : String.format(java.util.Locale.ROOT, "%.1f blocks away", distance)) + "]"));
             num++;
         }
     }
@@ -215,19 +223,24 @@ public final class RouletteManager {
         int num = 1;
         for (StationRuntime runtime : runtimes.values()) {
             RouletteStationData s = runtime.station;
-            player.sendMessage(color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
-                    "%num%", String.valueOf(num),
+            Location stationLocation = s.centerLocation();
+            double distance = stationLocation != null && stationLocation.getWorld().equals(player.getWorld())
+                    ? player.getLocation().distance(stationLocation) : -1.0D;
+            String entry = color(replace(text("messages.roulette.admin.station-list-entry", "&7%num%. &f%world% &7(%x%, %y%, %z%)"), Map.of(
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("roulette", s.key())),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
                     "%z%", String.valueOf(s.z())
-            ))));
+            )));
+            entry = entry.replace("§7- ", "");
+            player.sendMessage(color("&e" + plugin.stationNumberStorage().number("roulette", s.key()) + ". ") + entry + color(" &b[" + (distance < 0 ? "different world" : String.format(java.util.Locale.ROOT, "%.1f blocks away", distance)) + "]"));
             num++;
         }
     }
 
     public void removeStationByIndex(Player player, int index) {
-        if (index < 1 || index > runtimes.size()) {
+        if (index < 1) {
             player.sendMessage(color(replace(text("messages.roulette.admin.remove-bad-index-out-of-range",
                     "&cStation #%index% does not exist (1-%max%)."), Map.of(
                     "%index%", String.valueOf(index),
@@ -236,13 +249,8 @@ public final class RouletteManager {
             return;
         }
         StationRuntime runtime = null;
-        int i = 1;
         for (StationRuntime rt : runtimes.values()) {
-            if (i == index) {
-                runtime = rt;
-                break;
-            }
-            i++;
+            if (plugin.stationNumberStorage().number("roulette", rt.station.key()) == index) { runtime = rt; break; }
         }
         if (runtime == null) {
             return;
@@ -1164,6 +1172,8 @@ public final class RouletteManager {
 
     private void updateHologram(StationRuntime runtime) {
         Location anchor = runtime.geometry(boardSizeFor(runtime.station)).centerAbove(plugin.getConfig().getDouble("roulette.hologram-height", 3.5));
+        Location placed = placementStorage.get("roulette", runtime.station.key());
+        if (placed != null) anchor = placed;
         double viewRange = plugin.getConfig().getDouble("roulette.hologram-view-range", 8.0D);
         if (!hasNearbyHologramViewer(anchor, viewRange)) {
             deleteHologram(runtime.station.key());
@@ -1185,8 +1195,12 @@ public final class RouletteManager {
                 return;
             }
             display.teleport(anchor.clone().add(0, -yOffsets.get(i), 0));
+            display.setRotation(anchor.getYaw(), anchor.getPitch());
             display.setViewRange(viewRangeF);
-            display.text(component(lines.get(i)));
+            display.setBillboard(placementStorage.get("roulette", runtime.station.key()) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
+            display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
+            HologramStyle.apply(plugin, display);
+            display.text(HologramStyle.text(plugin, lines.get(i)));
         }
     }
 
@@ -1205,10 +1219,11 @@ public final class RouletteManager {
                 spawned.setInvulnerable(true);
                 spawned.addScoreboardTag(HOLO_TAG);
                 spawned.addScoreboardTag(stationTag);
-                spawned.setBillboard(Display.Billboard.CENTER);
-                spawned.setSeeThrough(true);
+                spawned.setBillboard(placementStorage.get("roulette", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
+                spawned.setRotation(anchor.getYaw(), anchor.getPitch());
+                spawned.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
                 spawned.setShadowed(false);
-                spawned.setDefaultBackground(false);
+                HologramStyle.apply(plugin, spawned);
                 spawned.setLineWidth(Integer.MAX_VALUE);
                 spawned.setViewRange(viewRange);
                 spawned.text(component(lines.get(line)));
@@ -1664,6 +1679,7 @@ public final class RouletteManager {
     }
 
     public String text(String path, String fallback) {
+        if (path.endsWith(".command.admin-usage")) return fallback;
         String v = plugin.getConfig().getString(path);
         if (v == null && plugin.getConfig().getDefaults() != null) {
             v = plugin.getConfig().getDefaults().getString(path);

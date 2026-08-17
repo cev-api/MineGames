@@ -1,3 +1,10 @@
+hologram:
+  background-color: '#000000'
+  background-opacity: 128
+  foreground-color: ''
+  foreground-opacity: 255
+  see-through-walls: true
+
 minegame:
   board:
     station-block: BEACON
@@ -33,6 +40,7 @@ minegame:
     win-ding-count: 5
   hologram:
     enabled: true
+    affix-to-wall: false
     line-spacing: 0.28
     behind-beacon-distance: 1.4
     base-height: 4.2
@@ -166,7 +174,7 @@ messages:
       usage: 'Usage: /minegame <mines 1-24> <wager> or /minegame cashout'
       mines-not-number: Mines must be a number.
       wager-not-number: Wager must be a number.
-      admin-usage: '&eUsage: /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>'
+      admin-usage: '&6Usage: &f /minegameadmin <create|remove|regen|list|set|setframe|sethidden|setsafe|setmine|holo|debug|casinoframe|housebalance|housewithdraw|reload>'
       set-usage: '&eUsage: /minegameadmin set <path> <value>'
       holo-usage: '&eUsage: /minegameadmin holo <on|off>'
       debug-usage: '&eUsage: /minegameadmin debug <on|off>'
@@ -233,7 +241,7 @@ messages:
       config-invalid-path: '&cThat config path cannot be changed in-game.'
       config-invalid-value: '&cInvalid value for &f%path%&c.'
       station-list-header: '&6[MineGame] &fStations: &e%count%'
-      station-list-entry: '&7- &f%world% &7(%x%, %y%, %z%) &8facing %facing%'
+      station-list-entry: '&e%num%. &f%world% &7(%x%, %y%, %z%) &b[facing %facing%]'
       station-list-entry-numbered: '&7%num%. &f%world% &7(%x%, %y%, %z%) &8facing %facing%'
       remove-list-header: '&6[MineGame] &eStations — use &f/minegameadmin remove <number> &eto delete:'
       no-stations: '&eNo mine stations exist.'
@@ -279,7 +287,7 @@ messages:
     command:
       usage: 'Usage: /roulette <red|black|green> <amount>'
       amount-not-number: Amount must be a number.
-      admin-usage: '&eUsage: /rouletteadmin <create|remove|regen|list|set [global]|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>'
+      admin-usage: '&6Usage: &f /rouletteadmin <create|remove|regen|list|set [global]|setframe|setred|setblack|setgreen|setselector|casinoframe|housebalance|housewithdraw|reload>'
       set-usage: '&eUsage: /rouletteadmin set [global] <path> <value>'
       set-global-usage: '&eUsage: /rouletteadmin set global <path> <value>'
       housewithdraw-usage: '&eUsage: /rouletteadmin housewithdraw <amount|all>'
@@ -315,7 +323,7 @@ messages:
       config-invalid: '&cInvalid roulette config value/path.'
       config-set: '&aSet &f%path% &ato &f%value%&a.'
       station-list-header: '&6[Roulette] &fStations: &e%count%'
-      station-list-entry: '&7- &f%world% &7(%x%, %y%, %z%)'
+      station-list-entry: '&e%num%. &f%world% &7(%x%, %y%, %z%)'
       board-material-set-all: '&a%label% set to &f%material% &afor all roulette stations.'
       board-material-set-station: '&a%label% set to &f%material%&a for this roulette
         station.'
@@ -362,7 +370,7 @@ messages:
 
   slots:
     command:
-      admin-usage: '&eUsage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set [global]|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>'
+      admin-usage: '&6Usage: &f /slotsadmin <create [3-8] [1|2]|remove|regen|list|set [global]|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>'
       set-usage: '&eUsage: /slotsadmin set [global] <path> <value>'
       set-global-usage: '&eUsage: /slotsadmin set global <path> <value>'
       board-usage: '&eUsage: /slotsadmin %command% [all] <BLOCK|reset>'
@@ -396,7 +404,7 @@ messages:
       config-invalid: '&cInvalid slots config value/path.'
       config-set: '&aSet &f%path% &ato &f%value%&a.'
       station-list-header: '&6[Slots] &fStations: &e%count%'
-      station-list-entry: '&7- &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%'
+      station-list-entry: '&e%num%. &f%world% &7(%x%, %y%, %z%) &b[width %width% | rows %rows%]'
       board-material-set-all: '&a%label% set to &f%material% &afor all slots stations.'
       board-material-set-station: '&a%label% set to &f%material%&a for this slots station.'
       board-material-reset-all: '&aSlots material overrides reset for all stations.'

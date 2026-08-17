@@ -49,6 +49,7 @@ public final class SlotsManager {
     private final MinegamePlugin plugin;
     private final Economy economy;
     private final SlotStationStorage stationStorage;
+    private final HologramPlacementStorage placementStorage;
     private final BlockSnapshotStorage restoreStorage;
     private final HouseBalanceStorage houseBalanceStorage;
     private final Map<String, SlotRuntime> runtimes = new HashMap<>();
@@ -74,12 +75,14 @@ public final class SlotsManager {
             MinegamePlugin plugin,
             Economy economy,
             SlotStationStorage stationStorage,
+            HologramPlacementStorage placementStorage,
             BlockSnapshotStorage restoreStorage,
             HouseBalanceStorage houseBalanceStorage
     ) {
         this.plugin = plugin;
         this.economy = economy;
         this.stationStorage = stationStorage;
+        this.placementStorage = placementStorage;
         this.restoreStorage = restoreStorage;
         this.houseBalanceStorage = houseBalanceStorage;
         loadConfig();
@@ -218,18 +221,23 @@ public final class SlotsManager {
         int num = 1;
         for (SlotRuntime runtime : runtimes.values()) {
             SlotStationData s = runtime.station;
-            player.sendMessage(color(replace(text(
+            Location stationLocation = s.originLocation();
+            double distance = stationLocation != null && stationLocation.getWorld().equals(player.getWorld())
+                    ? player.getLocation().distance(stationLocation) : -1.0D;
+            String entry = color(replace(text(
                     "messages.slots.admin.station-list-entry",
                     "&7%num%. &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%"
             ), Map.of(
-                    "%num%", String.valueOf(num),
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("slots", s.key())),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
                     "%z%", String.valueOf(s.z()),
                     "%width%", String.valueOf(s.reelCount()),
                     "%rows%", String.valueOf(s.rowCount())
-            ))));
+            )));
+            entry = entry.replace("§7- ", "");
+            player.sendMessage(color("&e" + plugin.stationNumberStorage().number("slots", s.key()) + ". ") + entry + color(" &b[" + (distance < 0 ? "different world" : String.format(java.util.Locale.ROOT, "%.1f blocks away", distance)) + "]"));
             num++;
         }
     }
@@ -244,24 +252,29 @@ public final class SlotsManager {
         int num = 1;
         for (SlotRuntime runtime : runtimes.values()) {
             SlotStationData s = runtime.station;
-            player.sendMessage(color(replace(text(
+            Location stationLocation = s.originLocation();
+            double distance = stationLocation != null && stationLocation.getWorld().equals(player.getWorld())
+                    ? player.getLocation().distance(stationLocation) : -1.0D;
+            String entry = color(replace(text(
                     "messages.slots.admin.station-list-entry",
                     "&7%num%. &f%world% &7(%x%, %y%, %z%) &8width %width% &7rows %rows%"
             ), Map.of(
-                    "%num%", String.valueOf(num),
+                    "%num%", String.valueOf(plugin.stationNumberStorage().number("slots", s.key())),
                     "%world%", s.worldName(),
                     "%x%", String.valueOf(s.x()),
                     "%y%", String.valueOf(s.y()),
                     "%z%", String.valueOf(s.z()),
                     "%width%", String.valueOf(s.reelCount()),
                     "%rows%", String.valueOf(s.rowCount())
-            ))));
+            )));
+            entry = entry.replace("§7- ", "");
+            player.sendMessage(color("&e" + plugin.stationNumberStorage().number("slots", s.key()) + ". ") + entry + color(" &b[" + (distance < 0 ? "different world" : String.format(java.util.Locale.ROOT, "%.1f blocks away", distance)) + "]"));
             num++;
         }
     }
 
     public void removeStationByIndex(Player player, int index) {
-        if (index < 1 || index > runtimes.size()) {
+        if (index < 1) {
             player.sendMessage(color(replace(text("messages.slots.admin.remove-bad-index-out-of-range",
                     "&cStation #%index% does not exist (1-%max%)."), Map.of(
                     "%index%", String.valueOf(index),
@@ -270,13 +283,8 @@ public final class SlotsManager {
             return;
         }
         SlotRuntime runtime = null;
-        int i = 1;
         for (SlotRuntime rt : runtimes.values()) {
-            if (i == index) {
-                runtime = rt;
-                break;
-            }
-            i++;
+            if (plugin.stationNumberStorage().number("slots", rt.station.key()) == index) { runtime = rt; break; }
         }
         if (runtime == null) {
             return;
@@ -687,6 +695,7 @@ public final class SlotsManager {
     }
 
     public String text(String path, String fallback) {
+        if (path.endsWith(".command.admin-usage")) return fallback;
         String v = plugin.getConfig().getString(path);
         if (v == null && plugin.getConfig().getDefaults() != null) {
             v = plugin.getConfig().getDefaults().getString(path);
@@ -899,6 +908,8 @@ public final class SlotsManager {
 
     private void updateHologram(SlotRuntime runtime) {
         Location anchor = runtime.geometry().centerAbove(plugin.getConfig().getDouble("slots.hologram-height", 5.8));
+        Location placed = placementStorage.get("slots", runtime.station.key());
+        if (placed != null) anchor = placed;
         double viewRange = plugin.getConfig().getDouble("slots.hologram-view-range", 20.0D);
         if (!hasNearbyHologramViewer(anchor, viewRange)) {
             deleteHologram(runtime.station.key());
@@ -918,6 +929,8 @@ public final class SlotsManager {
                 changed = true;
                 break;
             }
+            display.teleport(anchor.clone().subtract(0, i * plugin.getConfig().getDouble("slots.hologram-line-spacing", 0.6D), 0));
+            display.setRotation(anchor.getYaw(), anchor.getPitch());
             Component next = component(lines.get(i));
             if (!display.text().equals(next)) {
                 display.text(next);
@@ -974,9 +987,11 @@ public final class SlotsManager {
         for (int i = 0; i < lines.size(); i++) {
             Location lineLoc = anchor.clone().subtract(0, i * spacing, 0);
             TextDisplay display = (TextDisplay) anchor.getWorld().spawnEntity(lineLoc, EntityType.TEXT_DISPLAY);
-            display.text(component(lines.get(i)));
-            display.setBillboard(org.bukkit.entity.Display.Billboard.CENTER);
-            display.setSeeThrough(true);
+            HologramStyle.apply(plugin, display);
+            display.text(HologramStyle.text(plugin, lines.get(i)));
+            display.setBillboard(placementStorage.get("slots", stationKey) == null ? org.bukkit.entity.Display.Billboard.CENTER : org.bukkit.entity.Display.Billboard.FIXED);
+            display.setRotation(anchor.getYaw(), anchor.getPitch());
+            display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
             display.setShadowed(false);
             display.setPersistent(false);
             display.setDefaultBackground(false);

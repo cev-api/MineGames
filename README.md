@@ -247,6 +247,16 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 6. `roulette.hologram-title-gap`
 7. `roulette.hologram-section-gap`
 
+## Hologram Placement Commands
+
+These commands select a station by the same number shown by the corresponding `list` command. After running a placement command, right-click the block surface where the hologram should appear.
+
+- MineGame: `/minegameadmin hologramsign <number>`
+- Slots: `/slotsadmin hologramsign <number>`
+- Roulette: `/rouletteadmin hologramsign <number>`
+- Restore the original location: add `remove`, for example `/slotsadmin hologramsign remove 2`
+
+Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holograms use fixed surface orientation and can be moved by running the assignment command again. Set `hologram.see-through-walls` to `true` or `false` to control wall visibility.
 ## Notes
 
 - `set ...` commands edit the nearest station when the setting is station-local, unless you use `set global ...` to force a global default.
@@ -266,6 +276,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 
 - `plugins/MineGames/config.yml` (global settings)
 - `plugins/MineGames/stations.yml` (MineGame stations + overrides)
+- `plugins/MineGames/holograms.yml` (per-station hologram placement overrides)
 - `plugins/MineGames/roulette_stations.yml` (Roulette stations + overrides)
 - `plugins/MineGames/mines_restore.yml` (MineGame original-block snapshots for restore on station removal)
 - `plugins/MineGames/roulette_restore.yml` (Roulette original-block snapshots for restore on station removal)
