@@ -5,6 +5,8 @@ main: dev.minegame.mines.MinegamePlugin
 api-version: "1.21"
 depend:
   - Vault
+softdepend:
+  - EconomyProvider
 commands:
   minegame:
     description: Start a mines game while standing on a beacon station.
@@ -23,6 +25,13 @@ commands:
   slotsadmin:
     description: Manage slots stations.
     usage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set|hologramsign|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
+  fighter:
+    description: Bet on a nearby Fights arena.
+    usage: /fighter <1|2> <amount>
+    aliases: [fight]
+  fightadmin:
+    description: Manage Fights arenas.
+    usage: /fightadmin <create [size] [fighters]|fighters <#> <2-16>|move <#> [x y z]|remove <#>|regen [#]|list|holo>
   casinogui:
     description: Open the operator casino settings menu.
     usage: /casinogui

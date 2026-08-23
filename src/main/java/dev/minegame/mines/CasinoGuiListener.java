@@ -20,6 +20,7 @@ public final class CasinoGuiListener implements Listener {
             if (slot == 11) gui.openGame(player, "minegame");
             else if (slot == 13) gui.openGame(player, "roulette");
             else if (slot == 15) gui.openGame(player, "slots");
+            else if (slot == 17) gui.openGame(player, "fights");
             return;
         }
 

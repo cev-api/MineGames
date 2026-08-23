@@ -15,14 +15,17 @@ public final class MinegamePlugin extends JavaPlugin {
     private StationStorage stationStorage;
     private RouletteStationStorage rouletteStationStorage;
     private SlotStationStorage slotStationStorage;
+    private FightStationStorage fightStationStorage;
     private JoinGiftStorage joinGiftStorage;
     private BlockSnapshotStorage minesRestoreStorage;
     private BlockSnapshotStorage rouletteRestoreStorage;
     private BlockSnapshotStorage slotsRestoreStorage;
+    private BlockSnapshotStorage fightsRestoreStorage;
     private HouseBalanceStorage houseBalanceStorage;
     private MinesManager minesManager;
     private RouletteManager rouletteManager;
     private SlotsManager slotsManager;
+    private FightsManager fightsManager;
     private JoinGiftManager joinGiftManager;
     private HologramManager hologramManager;
     private FrameAnimator frameAnimator;
@@ -34,9 +37,12 @@ public final class MinegamePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        boolean migrateFightFramePattern = !getConfig().contains("fights.defaults-version");
         migrateLegacyDataFolder();
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
+        if (migrateFightFramePattern && getConfig().getInt("fights.casino-frame-animation.pattern", 3) == 1) { getConfig().set("fights.casino-frame-animation.pattern", 3); }
+        getConfig().set("fights.defaults-version", 2);
         saveConfig();
 
         if (!setupEconomy()) {
@@ -51,6 +57,8 @@ public final class MinegamePlugin extends JavaPlugin {
         rouletteStationStorage.load();
         this.slotStationStorage = new SlotStationStorage(this);
         slotStationStorage.load();
+        this.fightStationStorage = new FightStationStorage(this);
+        fightStationStorage.load();
         this.joinGiftStorage = new JoinGiftStorage(this);
         joinGiftStorage.load();
         this.minesRestoreStorage = new BlockSnapshotStorage(this, "mines_restore.yml");
@@ -59,6 +67,8 @@ public final class MinegamePlugin extends JavaPlugin {
         rouletteRestoreStorage.load();
         this.slotsRestoreStorage = new BlockSnapshotStorage(this, "slots_restore.yml");
         slotsRestoreStorage.load();
+        this.fightsRestoreStorage = new BlockSnapshotStorage(this, "fights_restore.yml");
+        fightsRestoreStorage.load();
         this.houseBalanceStorage = new HouseBalanceStorage(this);
         houseBalanceStorage.load();
 
@@ -70,6 +80,7 @@ public final class MinegamePlugin extends JavaPlugin {
         this.minesManager = new MinesManager(this, economy, stationStorage, minesRestoreStorage, houseBalanceStorage);
         this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, hologramPlacementStorage, rouletteRestoreStorage, houseBalanceStorage);
         this.slotsManager = new SlotsManager(this, economy, slotStationStorage, hologramPlacementStorage, slotsRestoreStorage, houseBalanceStorage);
+        this.fightsManager = new FightsManager(this, economy, fightStationStorage, hologramPlacementStorage, fightsRestoreStorage);
         this.joinGiftManager = new JoinGiftManager(this, economy, joinGiftStorage);
         this.hologramManager = new HologramManager(this, minesManager, hologramPlacementStorage);
         this.hologramPlacementController = new HologramPlacementController(this, hologramPlacementStorage, minesManager, slotsManager, rouletteManager);
@@ -82,6 +93,7 @@ public final class MinegamePlugin extends JavaPlugin {
         slotsFrameAnimator.start();
         rouletteManager.start();
         slotsManager.start();
+        fightsManager.start();
         CasinoFrameCommand casinoFrameCommand = new CasinoFrameCommand(minesManager, frameAnimator);
         RouletteCasinoFrameCommand rouletteCasinoFrameCommand = new RouletteCasinoFrameCommand(rouletteManager);
         SlotsCasinoFrameCommand slotsCasinoFrameCommand = new SlotsCasinoFrameCommand(slotsManager);
@@ -98,9 +110,13 @@ public final class MinegamePlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("rouletteadmin")).setTabCompleter(tabCompleter);
         Objects.requireNonNull(getCommand("slotsadmin")).setExecutor(new SlotsAdminCommand(slotsManager, slotsCasinoFrameCommand, hologramPlacementController));
         Objects.requireNonNull(getCommand("slotsadmin")).setTabCompleter(tabCompleter);
+        Objects.requireNonNull(getCommand("fighter")).setExecutor(new FighterCommand(fightsManager));
+        Objects.requireNonNull(getCommand("fighter")).setTabCompleter(new FightsTabCompleter(fightsManager));
+        Objects.requireNonNull(getCommand("fightadmin")).setExecutor(new FightsAdminCommand(fightsManager));
+        Objects.requireNonNull(getCommand("fightadmin")).setTabCompleter(new FightsTabCompleter(fightsManager));
         Objects.requireNonNull(getCommand("minegamesjoin")).setExecutor(new MinegamesJoinCommand(joinGiftManager));
         Objects.requireNonNull(getCommand("minegamesjoin")).setTabCompleter(tabCompleter);
-        CasinoGuiCommand casinoGuiCommand = new CasinoGuiCommand(this, minesManager, rouletteManager, slotsManager);
+        CasinoGuiCommand casinoGuiCommand = new CasinoGuiCommand(this, minesManager, rouletteManager, slotsManager, fightsManager);
         Objects.requireNonNull(getCommand("casinogui")).setExecutor(casinoGuiCommand);
         getServer().getPluginManager().registerEvents(new CasinoGuiListener(casinoGuiCommand), this);
 
@@ -109,6 +125,8 @@ public final class MinegamePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerExitListener(minesManager), this);
         getServer().getPluginManager().registerEvents(new RouletteListener(rouletteManager), this);
         getServer().getPluginManager().registerEvents(new SlotsListener(slotsManager), this);
+        getServer().getPluginManager().registerEvents(fightsManager, this);
+        getServer().getPluginManager().registerEvents(new CasinoBuildProtectionListener(this, minesManager, rouletteManager, slotsManager, fightsManager), this);
         getServer().getPluginManager().registerEvents(new MinegamesJoinListener(joinGiftManager), this);
     }
 
@@ -132,6 +150,7 @@ public final class MinegamePlugin extends JavaPlugin {
         if (rouletteManager != null) {
             rouletteManager.shutdown();
         }
+        if (fightsManager != null) { fightsManager.shutdown(); }
         if (slotsManager != null) {
             slotsManager.shutdown();
         }
@@ -144,6 +163,7 @@ public final class MinegamePlugin extends JavaPlugin {
         if (rouletteStationStorage != null) {
             rouletteStationStorage.save();
         }
+        if (fightStationStorage != null) { fightStationStorage.save(); }
         if (slotStationStorage != null) {
             slotStationStorage.save();
         }
@@ -155,6 +175,9 @@ public final class MinegamePlugin extends JavaPlugin {
         }
         if (slotsRestoreStorage != null) {
             slotsRestoreStorage.save();
+        }
+        if (fightsRestoreStorage != null) {
+            fightsRestoreStorage.save();
         }
         if (stationNumberStorage != null) {
             stationNumberStorage.save();

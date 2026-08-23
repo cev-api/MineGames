@@ -87,6 +87,30 @@ roulette:
     mode: idle_only
     interval-ticks: 6
 
+fights:
+  betting-seconds: 10
+  reveal-seconds: 5
+  celebration-seconds: 5
+  hologram-line-spacing: 0.38
+  hologram-view-range: 24.0
+  max-fighters: 16
+  fireworks-per-winner: 1
+  min-bet: 1.0
+  max-bet: -1
+  payout-multiplier: 1.9
+  activation-distance: 24.0
+  hologram-height: 5.5
+  arena-style: walls # walls or fence
+  casino-frame-animation:
+    enabled: true
+    block: REDSTONE_LAMP
+    mode: betting_only # always or betting_only
+    pattern: 3 # 1-10
+  blocks:
+    fill-block: DEEPSLATE_TILES
+    frame-block: DEEPSLATE_BRICKS
+    fence-block: OAK_FENCE
+    casino-frame-block: REDSTONE_LAMP
 slots:
   announcements:
     broadcast-win: false

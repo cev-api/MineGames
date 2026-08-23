@@ -1,0 +1,3 @@
+package dev.minegame.mines;
+import org.bukkit.command.*; import org.bukkit.entity.Player;
+public final class FighterCommand implements CommandExecutor { private final FightsManager fights; public FighterCommand(FightsManager fights){this.fights=fights;} public boolean onCommand(CommandSender s,Command c,String l,String[] a){if(!(s instanceof Player p)){s.sendMessage("Only players can use this command.");return true;}if(a.length!=2){p.sendMessage(fights.colorize("&eUsage: /fighter <1|2> <amount>"));return true;}try{fights.bet(p,Integer.parseInt(a[0]),Double.parseDouble(a[1]));}catch(NumberFormatException ex){p.sendMessage(fights.colorize("&cFighter must be 1 or 2 and amount must be a number."));}return true;} }
