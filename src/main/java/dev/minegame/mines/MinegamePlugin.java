@@ -100,6 +100,9 @@ public final class MinegamePlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("slotsadmin")).setTabCompleter(tabCompleter);
         Objects.requireNonNull(getCommand("minegamesjoin")).setExecutor(new MinegamesJoinCommand(joinGiftManager));
         Objects.requireNonNull(getCommand("minegamesjoin")).setTabCompleter(tabCompleter);
+        CasinoGuiCommand casinoGuiCommand = new CasinoGuiCommand(this, minesManager, rouletteManager, slotsManager);
+        Objects.requireNonNull(getCommand("casinogui")).setExecutor(casinoGuiCommand);
+        getServer().getPluginManager().registerEvents(new CasinoGuiListener(casinoGuiCommand), this);
 
         getServer().getPluginManager().registerEvents(hologramPlacementController.listener(), this);
         getServer().getPluginManager().registerEvents(new MinesListener(minesManager), this);

@@ -23,6 +23,9 @@ commands:
   slotsadmin:
     description: Manage slots stations.
     usage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set|hologramsign|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
+  casinogui:
+    description: Open the operator casino settings menu.
+    usage: /casinogui
   minegamesjoin:
     description: Configure the new-player join gift.
     usage: /minegamesjoin <true|false|set <amount>>

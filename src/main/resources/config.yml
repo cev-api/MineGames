@@ -84,6 +84,8 @@ roulette:
     interval-ticks: 6
 
 slots:
+  reel-count: 3
+  row-count: 1
   cost-per-spin: 100.0
   spin-seconds: 5
   stop-interval-ticks: 12

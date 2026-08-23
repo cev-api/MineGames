@@ -6,196 +6,102 @@ import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 
 public record SlotStationData(
-        String worldName,
-        int x,
-        int y,
-        int z,
-        BlockFace facing,
-        int reelCount,
-        int rowCount,
-        String outerFrameBlock,
-        String innerFrameBlock,
-        String winningBlock,
-        Boolean frameAnimEnabled,
-        String frameAnimBlock,
-        Integer frameAnimPattern,
-        String frameAnimMode,
-        Integer boardSize,
-        Double costPerSpin
+        String worldName, int x, int y, int z, BlockFace facing,
+        int reelCount, int rowCount,
+        String outerFrameBlock, String innerFrameBlock, String winningBlock,
+        Boolean frameAnimEnabled, String frameAnimBlock, Integer frameAnimPattern,
+        String frameAnimMode, Integer boardSize, Double costPerSpin,
+        Boolean betButtonsEnabled, String betButtonMaterial, Double betAdjustPercent,
+        Double currentBet
 ) {
     public SlotStationData {
-        if (outerFrameBlock != null) {
-            outerFrameBlock = outerFrameBlock.toUpperCase();
-        }
-        if (innerFrameBlock != null) {
-            innerFrameBlock = innerFrameBlock.toUpperCase();
-        }
-        if (winningBlock != null) {
-            winningBlock = winningBlock.toUpperCase();
-        }
-        if (frameAnimBlock != null) {
-            frameAnimBlock = frameAnimBlock.toUpperCase();
-        }
-        if (frameAnimMode != null) {
-            frameAnimMode = frameAnimMode.toLowerCase();
-        }
+        if (outerFrameBlock != null) outerFrameBlock = outerFrameBlock.toUpperCase();
+        if (innerFrameBlock != null) innerFrameBlock = innerFrameBlock.toUpperCase();
+        if (winningBlock != null) winningBlock = winningBlock.toUpperCase();
+        if (frameAnimBlock != null) frameAnimBlock = frameAnimBlock.toUpperCase();
+        if (betButtonMaterial != null) betButtonMaterial = betButtonMaterial.toUpperCase();
+        if (frameAnimMode != null) frameAnimMode = frameAnimMode.toLowerCase();
         reelCount = Math.max(3, Math.min(8, reelCount));
         rowCount = Math.max(1, Math.min(2, rowCount));
-        if (boardSize != null) {
-            boardSize = Math.max(2, boardSize);
-        }
-        if (costPerSpin != null) {
-            costPerSpin = Math.max(0.0, costPerSpin);
-        }
+        if (boardSize != null) boardSize = Math.max(2, boardSize);
+        if (costPerSpin != null) costPerSpin = Math.max(0.0, costPerSpin);
+        if (betAdjustPercent != null) betAdjustPercent = Math.max(0.0, Math.min(100.0, betAdjustPercent));
+        if (currentBet != null) currentBet = Math.max(0.01, currentBet);
     }
 
     public SlotStationData(String worldName, int x, int y, int z, BlockFace facing, int reelCount) {
-        this(worldName, x, y, z, facing, reelCount, 1, null, null, null, null, null, null, null, null, null);
+        this(worldName, x, y, z, facing, reelCount, 1, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    public String key() {
-        return worldName + ":" + x + ":" + y + ":" + z;
-    }
+    public String key() { return worldName + ":" + x + ":" + y + ":" + z; }
 
     public Location originLocation() {
         World world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            return null;
-        }
-        return new Location(world, x, y, z);
+        return world == null ? null : new Location(world, x, y, z);
     }
 
-    public SlotStationData withBoardMaterials(String outerFrame, String innerFrame, String winning) {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                outerFrame,
-                innerFrame,
-                winning,
-                frameAnimEnabled,
-                frameAnimBlock,
-                frameAnimPattern,
-                frameAnimMode,
-                boardSize,
-                costPerSpin
-        );
+    private SlotStationData copy(String outer, String inner, String winning,
+            Boolean animEnabled, String animBlock, Integer animPattern, String animMode,
+            Integer size, Double cost, Boolean buttons, String buttonMaterial,
+            Double percent, Double bet) {
+        return new SlotStationData(worldName, x, y, z, facing, reelCount, rowCount,
+                outer, inner, winning, animEnabled, animBlock, animPattern, animMode,
+                size, cost, buttons, buttonMaterial, percent, bet);
+    }
+
+    public SlotStationData withBoardMaterials(String outer, String inner, String winning) {
+        return copy(outer, inner, winning, frameAnimEnabled, frameAnimBlock, frameAnimPattern,
+                frameAnimMode, boardSize, costPerSpin, betButtonsEnabled, betButtonMaterial,
+                betAdjustPercent, currentBet);
     }
 
     public SlotStationData clearBoardMaterialOverrides() {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                null,
-                null,
-                null,
-                frameAnimEnabled,
-                frameAnimBlock,
-                frameAnimPattern,
-                frameAnimMode,
-                boardSize,
-                costPerSpin
-        );
+        return withBoardMaterials(null, null, null);
     }
 
     public SlotStationData withFrameAnimation(Boolean enabled, String block, Integer pattern, String mode) {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                outerFrameBlock,
-                innerFrameBlock,
-                winningBlock,
-                enabled,
-                block,
-                pattern,
-                mode,
-                boardSize,
-                costPerSpin
-        );
+        return copy(outerFrameBlock, innerFrameBlock, winningBlock, enabled, block, pattern, mode,
+                boardSize, costPerSpin, betButtonsEnabled, betButtonMaterial, betAdjustPercent, currentBet);
     }
 
     public SlotStationData clearFrameAnimationOverrides() {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                outerFrameBlock,
-                innerFrameBlock,
-                winningBlock,
-                null,
-                null,
-                null,
-                null,
-                boardSize,
-                costPerSpin
-        );
+        return withFrameAnimation(null, null, null, null);
+    }
+
+    public SlotStationData withDimensions(int reels, int rows) {
+        return new SlotStationData(worldName, x, y, z, facing, reels, rows,
+                outerFrameBlock, innerFrameBlock, winningBlock, frameAnimEnabled, frameAnimBlock,
+                frameAnimPattern, frameAnimMode, boardSize, costPerSpin, betButtonsEnabled,
+                betButtonMaterial, betAdjustPercent, currentBet);
     }
 
     public SlotStationData withBoardSize(Integer size) {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                outerFrameBlock,
-                innerFrameBlock,
-                winningBlock,
-                frameAnimEnabled,
-                frameAnimBlock,
-                frameAnimPattern,
-                frameAnimMode,
-                size,
-                costPerSpin
-        );
+        return copy(outerFrameBlock, innerFrameBlock, winningBlock, frameAnimEnabled, frameAnimBlock,
+                frameAnimPattern, frameAnimMode, size, costPerSpin, betButtonsEnabled,
+                betButtonMaterial, betAdjustPercent, currentBet);
     }
 
-    public SlotStationData clearBoardSizeOverride() {
-        return withBoardSize(null);
-    }
+    public SlotStationData clearBoardSizeOverride() { return withBoardSize(null); }
 
     public SlotStationData withCostPerSpin(Double price) {
-        return new SlotStationData(
-                worldName,
-                x,
-                y,
-                z,
-                facing,
-                reelCount,
-                rowCount,
-                outerFrameBlock,
-                innerFrameBlock,
-                winningBlock,
-                frameAnimEnabled,
-                frameAnimBlock,
-                frameAnimPattern,
-                frameAnimMode,
-                boardSize,
-                price
-        );
+        return copy(outerFrameBlock, innerFrameBlock, winningBlock, frameAnimEnabled, frameAnimBlock,
+                frameAnimPattern, frameAnimMode, boardSize, price, betButtonsEnabled,
+                betButtonMaterial, betAdjustPercent, currentBet);
     }
 
-    public SlotStationData clearCostPerSpinOverride() {
-        return withCostPerSpin(null);
+    public SlotStationData clearCostPerSpinOverride() { return withCostPerSpin(null); }
+
+    public SlotStationData withBetSettings(Boolean enabled, String material, Double percent) {
+        return copy(outerFrameBlock, innerFrameBlock, winningBlock, frameAnimEnabled, frameAnimBlock,
+                frameAnimPattern, frameAnimMode, boardSize, costPerSpin, enabled, material,
+                percent, currentBet);
+    }
+
+    public SlotStationData clearBetSettingsOverrides() { return withBetSettings(null, null, null); }
+
+    public SlotStationData withCurrentBet(Double bet) {
+        return copy(outerFrameBlock, innerFrameBlock, winningBlock, frameAnimEnabled, frameAnimBlock,
+                frameAnimPattern, frameAnimMode, boardSize, costPerSpin, betButtonsEnabled,
+                betButtonMaterial, betAdjustPercent, bet);
     }
 }

@@ -28,6 +28,11 @@ public final class SlotsListener implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
             return;
         }
+        if (slotsManager.isBetButton(event.getClickedBlock())) {
+            event.setCancelled(true);
+            slotsManager.adjustBet(event.getPlayer(), event.getClickedBlock());
+            return;
+        }
         if (slotsManager.isLeverBlock(event.getClickedBlock())) {
             event.setCancelled(true);
             slotsManager.pullLever(event.getPlayer(), event.getClickedBlock());

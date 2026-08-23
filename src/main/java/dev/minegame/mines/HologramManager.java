@@ -122,6 +122,7 @@ public final class HologramManager {
             }
             display.teleport(anchor.clone().add(0, -i * spacing, 0));
             display.setRotation(anchor.getYaw(), anchor.getPitch());
+            display.setGravity(false);
             display.setBillboard(placementStorage.get("minegame", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
             display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
             display.setViewRange(viewRange);
@@ -148,6 +149,7 @@ public final class HologramManager {
                 spawned.addScoreboardTag(HOLOGRAM_TAG);
                 spawned.addScoreboardTag(stationTag);
                 spawned.getPersistentDataContainer().set(stationKeyDataKey, PersistentDataType.STRING, stationKey);
+                spawned.setGravity(false);
                 spawned.setBillboard(placementStorage.get("minegame", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
                 spawned.setRotation(anchor.getYaw(), anchor.getPitch());
                 spawned.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));

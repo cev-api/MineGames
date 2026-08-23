@@ -281,6 +281,17 @@ public final class RouletteManager {
         ))));
     }
 
+    public boolean setStationConfigValue(String stationKey, String pathInput, String valueInput) {
+        String path = normalizeConfigPath(pathInput);
+        Object parsed = parseConfigValue(path, valueInput);
+        RouletteStationData station = stationStorage.get(stationKey);
+        if (parsed == null || station == null || !isStationConfigPath(path)) return false;
+        RouletteStationData updated = applyStationConfigValue(station, path, parsed);
+        if (updated == null) return false;
+        saveStation(updated, true);
+        return true;
+    }
+
     public void setConfigValue(Player player, String pathInput, String valueInput) {
         setConfigValue(player, pathInput, valueInput, false);
     }
@@ -343,6 +354,19 @@ public final class RouletteManager {
                 "%path%", path,
                 "%value%", String.valueOf(parsed)
         ))));
+    }
+
+    private void clearStationOverrideForGlobal(String path) {
+        for (StationRuntime runtime : new ArrayList<>(runtimes.values())) {
+            RouletteStationData station = runtime.station;
+            RouletteStationData cleared = switch (path) {
+                case "roulette.board-size" -> station.clearBoardSizeOverride();
+                case "roulette.blocks.frame", "roulette.blocks.red", "roulette.blocks.black", "roulette.blocks.green", "roulette.blocks.selector" -> station.clearBoardMaterialOverrides();
+                case "roulette.frame-animation.enabled", "roulette.frame-animation.block", "roulette.frame-animation.pattern", "roulette.frame-animation.mode" -> station.clearFrameAnimationOverrides();
+                default -> station;
+            };
+            if (cleared != station) saveStation(cleared, true);
+        }
     }
 
     private boolean isStationConfigPath(String path) {
@@ -1197,6 +1221,7 @@ public final class RouletteManager {
             display.teleport(anchor.clone().add(0, -yOffsets.get(i), 0));
             display.setRotation(anchor.getYaw(), anchor.getPitch());
             display.setViewRange(viewRangeF);
+            display.setGravity(false);
             display.setBillboard(placementStorage.get("roulette", runtime.station.key()) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
             display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
             HologramStyle.apply(plugin, display);
@@ -1219,6 +1244,7 @@ public final class RouletteManager {
                 spawned.setInvulnerable(true);
                 spawned.addScoreboardTag(HOLO_TAG);
                 spawned.addScoreboardTag(stationTag);
+                spawned.setGravity(false);
                 spawned.setBillboard(placementStorage.get("roulette", stationKey) == null ? Display.Billboard.CENTER : Display.Billboard.FIXED);
                 spawned.setRotation(anchor.getYaw(), anchor.getPitch());
                 spawned.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));

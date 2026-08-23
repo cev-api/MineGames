@@ -520,6 +520,17 @@ public final class MinesManager {
         }
     }
 
+    public boolean setStationConfigValue(String stationKey, String pathInput, String valueInput) {
+        String path = normalizeConfigPath(pathInput);
+        Object parsed = parseConfigValue(path, valueInput);
+        StationData station = stationStorage.get(stationKey);
+        if (parsed == null || station == null || !isStationConfigPath(path)) return false;
+        StationData updated = applyStationConfigValue(station, path, parsed);
+        if (updated == null) return false;
+        saveStation(updated, true);
+        return true;
+    }
+
     public void setConfigValue(Player player, String pathInput, String valueInput) {
         setConfigValue(player, pathInput, valueInput, false);
     }

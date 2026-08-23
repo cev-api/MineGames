@@ -58,6 +58,8 @@ public final class SlotsManager {
     private BukkitTask ticker;
 
     private double costPerSpin;
+    private int reelCount;
+    private int rowCount;
     private int spinSeconds;
     private int stopIntervalTicks;
     private int resultSeconds;
@@ -67,6 +69,9 @@ public final class SlotsManager {
     private Material outerFrameBlock;
     private Material innerFrameBlock;
     private Material winningBlock;
+    private boolean betButtonsEnabled;
+    private Material betButtonMaterial;
+    private double betAdjustPercent;
     private int fireworksPerWin;
     private List<Material> reelOptions = List.of(Material.GOLD_BLOCK, Material.EMERALD_BLOCK, Material.LAPIS_BLOCK, Material.DIAMOND_BLOCK);
     private final Map<Integer, Double> payoutMultipliers = new HashMap<>();
@@ -119,6 +124,7 @@ public final class SlotsManager {
         plugin.getConfig().options().copyDefaults(true);
         plugin.saveConfig();
         loadConfig();
+        
         for (SlotRuntime runtime : runtimes.values()) {
             if (runtime.phase == Phase.IDLE) {
                 renderIdle(runtime);
@@ -134,7 +140,7 @@ public final class SlotsManager {
     }
 
     public void createStation(Player player, int requestedReelCount, int requestedRowCount) {
-        int reelCount = Math.max(3, Math.min(8, requestedReelCount));
+        int reelCount = requestedReelCount <= 0 ? this.reelCount : Math.max(3, Math.min(8, requestedReelCount));
         int rowCount = Math.max(1, Math.min(2, requestedRowCount));
         BlockFace facing = yawToCardinal(player.getLocation().getYaw());
         Block frontBlock = player.getLocation().getBlock().getRelative(facing);
@@ -148,15 +154,7 @@ public final class SlotsManager {
                 facing,
                 reelCount,
                 rowCount,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                                                null, null, null, null, null, null, null, null, null, null, null, null, null
         );
         captureStationBlocksIfNeeded(station);
         stationStorage.upsert(station);
@@ -323,7 +321,7 @@ public final class SlotsManager {
             player.sendMessage(color(text("messages.slots.gameplay.station-busy", "&cThat slots machine is already spinning.")));
             return;
         }
-        double wager = costPerSpinFor(runtime.station);
+        double wager = currentBetFor(runtime.station);
         EconomyResponse withdraw = economy.withdrawPlayer(player, wager);
         if (!withdraw.transactionSuccess()) {
             player.sendMessage(color(text("messages.slots.gameplay.no-money", "&cYou do not have enough money.")));
@@ -354,6 +352,33 @@ public final class SlotsManager {
             }
         }
         return false;
+    }
+
+    public boolean isBetButton(Block block) {
+        for (SlotRuntime runtime : runtimes.values()) {
+            try {
+                if (betButtonsEnabledFor(runtime.station) && (runtime.geometry().isIncreaseButton(block) || runtime.geometry().isDecreaseButton(block))) return true;
+            } catch (IllegalStateException ignored) { }
+        }
+        return false;
+    }
+
+    public void adjustBet(Player player, Block block) {
+        for (SlotRuntime runtime : runtimes.values()) {
+            try {
+                SlotsGeometry geometry = runtime.geometry();
+                boolean increase = geometry.isIncreaseButton(block);
+                boolean decrease = geometry.isDecreaseButton(block);
+                if (!increase && !decrease) continue;
+                if (runtime.phase == Phase.SPINNING) { player.sendMessage(color(text("messages.slots.gameplay.station-busy", "&cThat slots machine is already spinning."))); return; }
+                double current = Math.max(1.0, Math.round(currentBetFor(runtime.station)));
+                double factor = 1.0 + (increase ? 1.0 : -1.0) * betAdjustPercentFor(runtime.station) / 100.0;
+                double next = Math.max(1.0, Math.round(current * factor));
+                saveStation(runtime.station.withCurrentBet(next), false);
+                player.sendMessage(color(replace(text("messages.slots.gameplay.bet-adjusted", "&aSlots bet set to &6$%amount%&a."), Map.of("%amount%", MONEY.format(next)))));
+                return;
+            } catch (IllegalStateException ignored) { }
+        }
     }
 
     public boolean isLeverBlock(Block block) {
@@ -619,6 +644,17 @@ public final class SlotsManager {
         ), Map.of("%balance%", MONEY.format(houseBalanceStorage.slotsBalance())))));
     }
 
+    public boolean setStationConfigValue(String stationKey, String pathInput, String valueInput) {
+        String path = normalizeConfigPath(pathInput);
+        Object parsed = parseConfigValue(path, valueInput);
+        SlotStationData station = stationStorage.get(stationKey);
+        if (parsed == null || station == null || !isStationConfigPath(path)) return false;
+        SlotStationData updated = applyStationConfigValue(station, path, parsed);
+        if (updated == null) return false;
+        saveStation(updated, true);
+        return true;
+    }
+
     public void setConfigValue(Player player, String pathInput, String valueInput) {
         setConfigValue(player, pathInput, valueInput, false);
     }
@@ -649,6 +685,8 @@ public final class SlotsManager {
         plugin.getConfig().set(path, parsed);
         plugin.saveConfig();
         loadConfig();
+        if (forceGlobal && (path.equals("slots.reel-count") || path.equals("slots.row-count"))) applyGlobalDimensions();
+        else if (forceGlobal) clearStationOverrideForGlobal(path);
         for (SlotRuntime runtime : runtimes.values()) {
             if (runtime.phase == Phase.IDLE) {
                 renderIdle(runtime);
@@ -662,22 +700,48 @@ public final class SlotsManager {
         ))));
     }
 
+    private void applyGlobalDimensions() {
+        List<SlotStationData> updated = new ArrayList<>();
+        for (SlotStationData station : stationStorage.all()) updated.add(station.withDimensions(reelCount, rowCount));
+        saveAllStations(updated, true);
+    }
+
+    private void clearStationOverrideForGlobal(String path) {
+        for (SlotRuntime runtime : new ArrayList<>(runtimes.values())) {
+            SlotStationData station = runtime.station;
+            SlotStationData cleared = switch (path) {
+                case "slots.cost-per-spin" -> station.clearCostPerSpinOverride();
+                case "slots.frame-animation.enabled", "slots.frame-animation.block", "slots.frame-animation.pattern", "slots.frame-animation.mode" -> station.clearFrameAnimationOverrides();
+                case "slots.blocks.outer-frame", "slots.blocks.inner-frame", "slots.blocks.winning" -> station.clearBoardMaterialOverrides();
+                case "slots.bet-buttons.enabled", "slots.bet-buttons.material", "slots.bet-buttons.adjust-percent" -> station.clearBetSettingsOverrides();
+                default -> station;
+            };
+            if (cleared != station) saveStation(cleared, false);
+        }
+    }
+
     private boolean isStationConfigPath(String path) {
         return switch (path) {
-            case "slots.cost-per-spin",
+            case "slots.reel-count", "slots.row-count",
+                    "slots.cost-per-spin",
                     "slots.frame-animation.enabled",
                     "slots.frame-animation.block",
                     "slots.frame-animation.pattern",
                     "slots.frame-animation.mode",
                     "slots.blocks.outer-frame",
                     "slots.blocks.inner-frame",
-                    "slots.blocks.winning" -> true;
+                    "slots.blocks.winning",
+                    "slots.bet-buttons.enabled",
+                    "slots.bet-buttons.material",
+                    "slots.bet-buttons.adjust-percent" -> true;
             default -> false;
         };
     }
 
     private SlotStationData applyStationConfigValue(SlotStationData station, String path, Object parsed) {
         return switch (path) {
+            case "slots.reel-count" -> station.withDimensions((Integer) parsed, station.rowCount());
+            case "slots.row-count" -> station.withDimensions(station.reelCount(), (Integer) parsed);
             case "slots.cost-per-spin" -> station.withCostPerSpin((Double) parsed);
             case "slots.frame-animation.enabled" -> station.withFrameAnimation((Boolean) parsed, null, null, null);
             case "slots.frame-animation.block" -> station.withFrameAnimation(null, String.valueOf(parsed), null, null);
@@ -686,10 +750,12 @@ public final class SlotsManager {
             case "slots.blocks.outer-frame" -> station.withBoardMaterials(String.valueOf(parsed), station.innerFrameBlock(), station.winningBlock());
             case "slots.blocks.inner-frame" -> station.withBoardMaterials(station.outerFrameBlock(), String.valueOf(parsed), station.winningBlock());
             case "slots.blocks.winning" -> station.withBoardMaterials(station.outerFrameBlock(), station.innerFrameBlock(), String.valueOf(parsed));
+            case "slots.bet-buttons.enabled" -> station.withBetSettings((Boolean) parsed, station.betButtonMaterial(), station.betAdjustPercent());
+            case "slots.bet-buttons.material" -> station.withBetSettings(station.betButtonsEnabled(), String.valueOf(parsed), station.betAdjustPercent());
+            case "slots.bet-buttons.adjust-percent" -> station.withBetSettings(station.betButtonsEnabled(), station.betButtonMaterial(), (Double) parsed);
             default -> null;
         };
     }
-
     public Object getCurrentConfigValue(String path) {
         return plugin.getConfig().get(normalizeConfigPath(path));
     }
@@ -850,6 +916,7 @@ public final class SlotsManager {
             }
         }
         configureLever(geometry.leverBlock(), runtime.station);
+        configureBetButtons(geometry, runtime.station);
     }
 
     private void updateSpinLights(SlotRuntime runtime) {
@@ -893,6 +960,21 @@ public final class SlotsManager {
         }
         if (changed) {
             block.setBlockData(data, false);
+        }
+    }
+
+    private void configureBetButtons(SlotsGeometry geometry, SlotStationData station) {
+        for (Block button : List.of(geometry.increaseButton(), geometry.decreaseButton())) {
+            if (!betButtonsEnabledFor(station)) {
+                button.setType(innerFrameBlockFor(station), false);
+                continue;
+            }
+            button.setType(betButtonMaterialFor(station), false);
+            if (button.getBlockData() instanceof Switch data) {
+                data.setAttachedFace(FaceAttachable.AttachedFace.WALL);
+                data.setFacing(geometry.leverFacing().getOppositeFace());
+                button.setBlockData(data, false);
+            }
         }
     }
 
@@ -943,7 +1025,7 @@ public final class SlotsManager {
 
     private List<String> buildHologramLines(SlotRuntime runtime) {
         Map<String, String> vars = new HashMap<>();
-        vars.put("%price%", MONEY.format(costPerSpinFor(runtime.station)));
+        vars.put("%price%", MONEY.format(currentBetFor(runtime.station)));
         vars.put("%winning_block%", displayName(winningBlockFor(runtime.station)));
         vars.put("%seconds%", String.valueOf(runtime.spinSecondsLeft));
         String playerName = runtime.playerId == null ? "Player" : Bukkit.getOfflinePlayer(runtime.playerId).getName();
@@ -989,6 +1071,7 @@ public final class SlotsManager {
             TextDisplay display = (TextDisplay) anchor.getWorld().spawnEntity(lineLoc, EntityType.TEXT_DISPLAY);
             HologramStyle.apply(plugin, display);
             display.text(HologramStyle.text(plugin, lines.get(i)));
+            display.setGravity(false);
             display.setBillboard(placementStorage.get("slots", stationKey) == null ? org.bukkit.entity.Display.Billboard.CENTER : org.bukkit.entity.Display.Billboard.FIXED);
             display.setRotation(anchor.getYaw(), anchor.getPitch());
             display.setSeeThrough(plugin.getConfig().getBoolean("hologram.see-through-walls", true));
@@ -1178,6 +1261,7 @@ public final class SlotsManager {
         stationStorage.save();
         SlotRuntime runtime = runtimes.get(station.key());
         if (runtime != null) {
+            if (resized) resetRuntimeForResize(runtime, station);
             runtime.station = station;
             if (rerender) {
                 renderCurrent(runtime);
@@ -1189,6 +1273,19 @@ public final class SlotsManager {
                 renderIdle(created);
             }
         }
+    }
+
+    private void resetRuntimeForResize(SlotRuntime runtime, SlotStationData station) {
+        if (runtime.spinTask != null) runtime.spinTask.cancel();
+        runtime.spinTask = null;
+        runtime.phase = Phase.IDLE;
+        runtime.playerId = null;
+        runtime.wager = 0.0;
+        runtime.lockedReels = 0;
+        runtime.finalSymbols = List.of();
+        runtime.winningPositions = List.of();
+        runtime.resultLines.clear();
+        runtime.currentSymbols = randomSymbols(station);
     }
 
     private void saveAllStations(List<SlotStationData> stations, boolean rerender) {
@@ -1204,6 +1301,7 @@ public final class SlotsManager {
         for (SlotStationData station : stations) {
             SlotRuntime runtime = runtimes.get(station.key());
             if (runtime != null) {
+                if (runtime.station.reelCount() != station.reelCount() || runtime.station.rowCount() != station.rowCount()) resetRuntimeForResize(runtime, station);
                 runtime.station = station;
                 if (rerender) {
                     renderCurrent(runtime);
@@ -1303,6 +1401,8 @@ public final class SlotsManager {
 
     private void loadConfig() {
         this.costPerSpin = Math.max(0.01, plugin.getConfig().getDouble("slots.cost-per-spin", 100.0));
+        this.reelCount = Math.max(3, Math.min(8, plugin.getConfig().getInt("slots.reel-count", 3)));
+        this.rowCount = Math.max(1, Math.min(2, plugin.getConfig().getInt("slots.row-count", 1)));
         this.spinSeconds = Math.max(1, plugin.getConfig().getInt("slots.spin-seconds", 5));
         this.stopIntervalTicks = Math.max(1, plugin.getConfig().getInt("slots.stop-interval-ticks", 12));
         this.resultSeconds = Math.max(1, plugin.getConfig().getInt("slots.result-seconds", 5));
@@ -1313,6 +1413,9 @@ public final class SlotsManager {
         this.outerFrameBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.outer-frame"), Material.STONE);
         this.innerFrameBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.inner-frame"), Material.REDSTONE_LAMP);
         this.winningBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.winning"), Material.DIAMOND_BLOCK);
+        this.betButtonsEnabled = plugin.getConfig().getBoolean("slots.bet-buttons.enabled", true);
+        this.betButtonMaterial = parseMaterial(plugin.getConfig().getString("slots.bet-buttons.material"), Material.STONE_BUTTON);
+        this.betAdjustPercent = Math.max(0.0, Math.min(100.0, plugin.getConfig().getDouble("slots.bet-buttons.adjust-percent", 25.0)));
 
         List<String> configuredReels = plugin.getConfig().getStringList("slots.blocks.reel-options");
         List<Material> parsedReels = new ArrayList<>();
@@ -1339,6 +1442,22 @@ public final class SlotsManager {
         return station.costPerSpin() != null ? Math.max(0.01, station.costPerSpin()) : costPerSpin;
     }
 
+    private double currentBetFor(SlotStationData station) {
+        return station.currentBet() != null ? Math.max(0.01, station.currentBet()) : costPerSpinFor(station);
+    }
+
+    private boolean betButtonsEnabledFor(SlotStationData station) {
+        return station.betButtonsEnabled() != null ? station.betButtonsEnabled() : betButtonsEnabled;
+    }
+
+    private Material betButtonMaterialFor(SlotStationData station) {
+        return parseMaterial(station.betButtonMaterial(), betButtonMaterial);
+    }
+
+    private double betAdjustPercentFor(SlotStationData station) {
+        return station.betAdjustPercent() != null ? station.betAdjustPercent() : betAdjustPercent;
+    }
+
     private double defaultMultiplier(int wins) {
         return switch (wins) {
             case 1 -> 0.0;
@@ -1362,19 +1481,23 @@ public final class SlotsManager {
     }
 
     private Object parseConfigValue(String path, String raw) {
-        if (!path.startsWith("slots.")) {
-            return null;
-        }
+        if (!path.startsWith("slots.")) return null;
         try {
             if (path.startsWith("slots.payout-multipliers.")) {
                 int wins = Integer.parseInt(path.substring("slots.payout-multipliers.".length()));
-                if (wins < 1 || wins > 16) {
-                    return null;
-                }
+                if (wins < 1 || wins > 16) return null;
                 double value = Double.parseDouble(raw);
                 return value >= 0.0 ? value : null;
             }
             return switch (path) {
+                case "slots.reel-count" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value >= 3 && value <= 8 ? value : null;
+                }
+                case "slots.row-count" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value >= 1 && value <= 2 ? value : null;
+                }
                 case "slots.cost-per-spin",
                         "slots.activation-distance-from-frame",
                         "slots.max-payout",
@@ -1386,19 +1509,24 @@ public final class SlotsManager {
                         "slots.result-seconds",
                         "slots.fireworks-per-win",
                         "slots.frame-animation.interval-ticks" -> {
-                    int v = Integer.parseInt(raw);
-                    yield v > 0 ? v : null;
+                    int value = Integer.parseInt(raw);
+                    yield value > 0 ? value : null;
                 }
                 case "slots.lever-placement" -> normalizeLeverPlacement(raw);
                 case "slots.spin-light-mode" -> normalizeSpinLightMode(raw);
-                case "slots.blocks.outer-frame", "slots.blocks.inner-frame", "slots.blocks.winning", "slots.frame-animation.block" -> {
-                    Material m = Material.matchMaterial(raw);
-                    yield m != null && m.isBlock() ? m.name() : null;
+                case "slots.blocks.outer-frame", "slots.blocks.inner-frame", "slots.blocks.winning",
+                        "slots.frame-animation.block", "slots.bet-buttons.material" -> {
+                    Material material = Material.matchMaterial(raw);
+                    yield material != null && material.isBlock() ? material.name() : null;
                 }
-                case "slots.frame-animation.enabled" -> parseBoolean(raw);
+                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled" -> parseBoolean(raw);
+                case "slots.bet-buttons.adjust-percent" -> {
+                    double value = Double.parseDouble(raw);
+                    yield value >= 0.0 && value <= 100.0 ? value : null;
+                }
                 case "slots.frame-animation.pattern" -> {
-                    int v = Integer.parseInt(raw);
-                    yield (v >= 1 && v <= 10) ? v : null;
+                    int value = Integer.parseInt(raw);
+                    yield value >= 1 && value <= 10 ? value : null;
                 }
                 case "slots.frame-animation.mode" -> normalizeFrameMode(raw);
                 default -> null;
@@ -1407,7 +1535,6 @@ public final class SlotsManager {
             return null;
         }
     }
-
     private String normalizeConfigPath(String rawPath) {
         String path = rawPath.toLowerCase();
         return path.startsWith("slots.") ? path : "slots." + path;

@@ -59,6 +59,10 @@ public final class SlotStationStorage {
                     boardSize = null;
                 }
             }
+            Boolean betButtonsEnabled = item.containsKey("betButtonsEnabled") ? Boolean.parseBoolean(String.valueOf(item.get("betButtonsEnabled"))) : null;
+            String betButtonMaterial = item.containsKey("betButtonMaterial") ? String.valueOf(item.get("betButtonMaterial")) : null;
+            Double betAdjustPercent = item.containsKey("betAdjustPercent") ? Double.parseDouble(String.valueOf(item.get("betAdjustPercent"))) : null;
+            Double currentBet = item.containsKey("currentBet") ? Double.parseDouble(String.valueOf(item.get("currentBet"))) : null;
             Double costPerSpin = null;
             if (item.containsKey("costPerSpin")) {
                 try {
@@ -83,7 +87,11 @@ public final class SlotStationStorage {
                     frameAnimPattern,
                     frameAnimMode,
                     boardSize,
-                    costPerSpin
+                    costPerSpin,
+                    betButtonsEnabled,
+                    betButtonMaterial,
+                    betAdjustPercent,
+                    currentBet
             );
             stations.put(station.key(), station);
         }
@@ -128,6 +136,10 @@ public final class SlotStationStorage {
             if (station.costPerSpin() != null) {
                 map.put("costPerSpin", station.costPerSpin());
             }
+            if (station.betButtonsEnabled() != null) map.put("betButtonsEnabled", station.betButtonsEnabled());
+            if (station.betButtonMaterial() != null) map.put("betButtonMaterial", station.betButtonMaterial());
+            if (station.betAdjustPercent() != null) map.put("betAdjustPercent", station.betAdjustPercent());
+            if (station.currentBet() != null) map.put("currentBet", station.currentBet());
             raw.add(map);
         }
         yaml.set("stations", raw);

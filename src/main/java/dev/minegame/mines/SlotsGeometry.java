@@ -26,6 +26,8 @@ public final class SlotsGeometry {
     private final Set<String> reelKeys = new HashSet<>();
     private final Set<String> machineKeys = new HashSet<>();
     private final String leverKey;
+    private final String increaseButtonKey;
+    private final String decreaseButtonKey;
 
     public SlotsGeometry(SlotStationData station, String leverPlacement) {
         this.station = station;
@@ -48,6 +50,8 @@ public final class SlotsGeometry {
         }
         buildKeys();
         this.leverKey = key(leverBlock());
+        this.increaseButtonKey = key(increaseButton());
+        this.decreaseButtonKey = key(decreaseButton());
     }
 
     public int totalWidth() {
@@ -149,6 +153,8 @@ public final class SlotsGeometry {
         }
         blocks.addAll(reelBlocks());
         blocks.add(leverBlock());
+        blocks.add(increaseButton());
+        blocks.add(decreaseButton());
         return blocks;
     }
 
@@ -159,6 +165,11 @@ public final class SlotsGeometry {
     public boolean isLeverBlock(Block block) {
         return leverKey.equals(key(block));
     }
+
+    public boolean isIncreaseButton(Block block) { return increaseButtonKey.equals(key(block)); }
+    public boolean isDecreaseButton(Block block) { return decreaseButtonKey.equals(key(block)); }
+    public Block increaseButton() { return leverBlock().getRelative(BlockFace.UP); }
+    public Block decreaseButton() { return leverBlock().getRelative(BlockFace.DOWN); }
 
     public Location centerAbove(double y) {
         double centerCol = (totalWidth() - 1) / 2.0D;
@@ -187,6 +198,8 @@ public final class SlotsGeometry {
             machineKeys.add(key);
         }
         machineKeys.add(key(leverBlock()));
+        machineKeys.add(increaseButtonKey);
+        machineKeys.add(decreaseButtonKey);
     }
 
     private Vector blockVector(BlockFace face) {
