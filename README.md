@@ -2,7 +2,7 @@
 
 ![0](https://i.imgur.com/NO1MpCA.png)
 
-MineGames is a Paper `1.21+` casino plugin with three game types:
+MineGames is a Paper `1.21+` casino plugin with four game types:
 
 1. **MineGame**: reveal safe blocks, avoid mines, cash out at your chosen point.
 
@@ -17,6 +17,10 @@ MineGames is a Paper `1.21+` casino plugin with three game types:
 3. **Slots**: lever-driven reels with configurable widths, rows, frames, and payouts.
 
 ![5](https://i.imgur.com/cj5fCTH.png)
+
+4. **Fights**: wager on randomly equipped mobs battling inside a protected arena.
+
+![6](https://i.imgur.com/31TJ2ly.png)
 
 All games use Vault economy, support per-station cosmetics, holograms, and casino frame animations.
 
@@ -45,6 +49,7 @@ Output jar: `target/minegames-1.x.x.jar`
 1. MineGame station: stand on your station block and run `/minegameadmin create`
 2. Roulette station: stand at board center and run `/rouletteadmin create`
 3. Slots station: stand where you want the machine and run `/slotsadmin create [3-8] [1|2]`
+4. Fights station: stand at the arena origin and run `/fightadmin create [odd-size] [fighters]`
 
 ## Casino Settings GUI
 
@@ -54,7 +59,7 @@ Operators can open the inventory-based settings menu with:
 /casinogui
 ```
 
-The GUI includes MineGame, Roulette, and Slots. Select a game to edit global settings, browse its stations, and edit supported per-station overrides. Global changes override existing station settings. Previous/Next navigate settings pages, and Back/Stations provide navigation.
+The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit global settings, browse its stations, and edit supported per-station overrides. Global changes override existing station settings. Previous/Next navigate settings pages, and Back/Stations provide navigation.
 
 ## Gameplay
 
@@ -82,6 +87,16 @@ The GUI includes MineGame, Roulette, and Slots. Select a game to edit global set
 4. Matching the winning block pays out based on how many appear or which payline lands.
 5. The station can be customized with outer frame, inner frame, winning block, row count, and lever-side frame animation.
 
+### Fights
+
+1. Stand near a Fights station.
+2. Place a bet: `/fighter <fighter-number> <amount>`.
+3. The first accepted bet opens the countdown; fighters spawn only when betting closes.
+4. Two fighters run as a duel. Three or more fighters run as a free-for-all.
+5. Fighters receive random weapons, armor, enchantments, colors, and supported variants, then fight until one remains. The pool includes zombie, husk, drowned, zombie villager, skeleton, stray, bogged, wither skeleton, pillager, piglin, piglin brute, and zombified piglin fighters. Winning bets pay automatically, losing bettors are notified, and the winner is celebrated with fireworks.
+6. Set `fights.show-bettor-name-on-fighter` to show the bettor in the mob nameplate. Set `fights.fireworks-for-winning-bettors` to `true` (the default) to add fireworks from all four arena corners for winning bets.
+7. All rolled weapons, including tridents, use armor- and enchantment-aware damage calculations.
+
 ## Winner Math & RNG
 
 1. **MineGame**
@@ -104,9 +119,19 @@ The GUI includes MineGame, Roulette, and Slots. Select a game to edit global set
    - For single-row stations, the total number of matching symbols is used directly. For two-row stations, the code checks top line, bottom line, diagonal, reverse diagonal, full screen, and mixed line patterns.
    - Payout is `wager * multiplier`, where the multiplier comes from `slots.payout-multipliers` and is then scaled by station size and the detected pattern.
 
-4. **RNG notes**
+4. **Fights**
+   - Each fighter is selected independently from the supported zombie, skeleton, pillager, and piglin variants at round reset.
+   - Weapons and armor are selected independently from the configured in-code pools. Leather armor receives a random color.
+   - Each rolled item receives a random set of compatible enchantments (up to three), with a random level up to the enchantment maximum.
+   - Weapon base damage, Sharpness/Smite, Power, Impaling, Fire Aspect, armor points, Protection, Projectile Protection, and Thorns all influence combat damage or retaliation.
+   - Ranged attacks, including tridents, use the same isolated fighter damage path and apply armor/enchantment mitigation before health is reduced.
+   - A winning bet pays `bet * fights.payout-multiplier * (fighter-count / 2)`. The configured multiplier and fighter count determine the potential payout shown on the hologram.
+
+5. **RNG notes**
    - MineGame uses `Math.random()` for mine placement.
    - Roulette and Slots use a shared `java.util.Random` instance.
+   - Fighter types, equipment materials, leather colors, enchantment choices, and enchantment levels use Java `ThreadLocalRandom` (with compatible enchantments shuffled before selection).
+   - The random rolls are generated when fighters are spawned and equipped; they are not seeded for replayable outcomes.
    - None of the games use seeded or cryptographic RNG, so results are game-random rather than replay-deterministic.
 
 ## Commands
@@ -119,6 +144,8 @@ The GUI includes MineGame, Roulette, and Slots. Select a game to edit global set
 - MineGame aliases: `/mine`, `/mines`
 - Roulette:
 1. `/roulette <red|black|green> <amount>`
+- Fights:
+1. `/fighter <fighter-number> <amount>`
 
 ### MineGame Admin (`mine.admin`)
 
@@ -208,6 +235,22 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 2. `/slotsadmin casinoframe [all] mode <idle_only|always>`
 3. `/slotsadmin casinoframe [all] <off|reset>`
 
+### Fights Admin (`fights.admin`)
+
+Primary command: `/fightadmin`
+
+- Station lifecycle:
+1. `/fightadmin create [odd-size] [fighters]`
+2. `/fightadmin fighters <arena-number> <2-16>`
+3. `/fightadmin move <arena-number>` or `/fightadmin move <arena-number> <x> <y> <z>` (relative block offset)
+4. `/fightadmin remove <arena-number>`
+5. `/fightadmin regen [arena-number]`
+6. `/fightadmin list`
+7. `/fightadmin holo <arena-number> [reset]`
+- Global Fights config:
+1. `/fightadmin set <path> <value>`
+2. Important paths include `fights.max-fighters`, `fights.betting-seconds`, `fights.payout-multiplier`, `fights.arena-style`, `fights.blocks.*`, `fights.casino-frame-animation.*`, and `fights.hologram.bet-display-mode`.
+
 ### Join Gift
 
 - `/minegamesjoin true|false` enables or disables the first-join gift.
@@ -219,6 +262,8 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 
 - `mine.admin` (default: op)
 - `roulette.admin` (default: op)
+- `slots.admin` (default: op)
+- `fights.admin` (default: op)
 
 ## Config Layout
 
@@ -237,6 +282,10 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - Roulette:
 1. `roulette.*`
 2. `roulette-frame-animation.*`
+- Fights:
+1. `fights.*`
+2. `fights.blocks.*`
+3. `fights.casino-frame-animation.*`
 
 ## Distance / Activation / Hologram Settings
 
@@ -259,6 +308,12 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 5. `roulette.hologram-line-spacing`
 6. `roulette.hologram-title-gap`
 7. `roulette.hologram-section-gap`
+
+- Fights arena activation + hologram visibility:
+1. `fights.activation-distance`
+2. `fights.hologram-view-range`
+3. `fights.hologram-height`
+4. `fights.hologram-line-spacing`
 
 ## Hologram Placement Commands
 
@@ -285,6 +340,11 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - Removing MineGame/Roulette/Slots stations restores original world blocks for stations created on current versions (snapshot-based restore).
 - Roulette station creation anchors the board directly under the admin's feet (replaces floor blocks there).
 - Holograms are configured with no-wrap text display behavior for more consistent spacing.
+- Fights support `walls` and `fence` arena styles. Fence mode is the default, uses connected spruce fences, and places the casino frame below them.
+- Fights fighters target only fighters in their own arena and are isolated from outside damage, projectiles, potions, mobs, portals, pickups, fire, lava, explosions, and despawning. They drop no items or experience.
+- All registered games block non-admin building inside their footprint and in the airspace above it. Lava/water buckets and fluid flow into games are cancelled, and protected game blocks cannot be damaged by explosions.
+- Removing Fights stations restores captured original blocks; `regen` rebuilds the station from current configuration.
+
 
 ## Storage
 
@@ -292,8 +352,12 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - `plugins/MineGames/stations.yml` (MineGame stations + overrides)
 - `plugins/MineGames/holograms.yml` (per-station hologram placement overrides)
 - `plugins/MineGames/roulette_stations.yml` (Roulette stations + overrides)
+- `plugins/MineGames/slots_stations.yml` (Slots stations + overrides)
+- `plugins/MineGames/fights_stations.yml` (Fights stations)
 - `plugins/MineGames/mines_restore.yml` (MineGame original-block snapshots for restore on station removal)
 - `plugins/MineGames/roulette_restore.yml` (Roulette original-block snapshots for restore on station removal)
+- `plugins/MineGames/slots_restore.yml` (Slots original-block snapshots for restore on station removal)
+- `plugins/MineGames/fights_restore.yml` (Fights original-block snapshots for restore on station removal)
 - `plugins/MineGames/house_balances.yml` (separate MineGame/Roulette house balance + wager/payout totals)
 
 ## License

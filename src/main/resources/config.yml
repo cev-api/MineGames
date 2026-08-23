@@ -95,12 +95,13 @@ fights:
   hologram-view-range: 24.0
   max-fighters: 16
   fireworks-per-winner: 1
+  fireworks-for-winning-bettors: true
   min-bet: 1.0
   max-bet: -1
   payout-multiplier: 1.9
   activation-distance: 24.0
   hologram-height: 5.5
-  arena-style: walls # walls or fence
+  arena-style: fence # walls or fence
   casino-frame-animation:
     enabled: true
     block: REDSTONE_LAMP
@@ -109,7 +110,7 @@ fights:
   blocks:
     fill-block: DEEPSLATE_TILES
     frame-block: DEEPSLATE_BRICKS
-    fence-block: OAK_FENCE
+    fence-block: SPRUCE_FENCE
     casino-frame-block: REDSTONE_LAMP
 slots:
   announcements:
