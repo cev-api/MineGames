@@ -69,6 +69,8 @@ public final class RouletteManager {
     private double maxPayout;
     private int fireworksPerWinner;
     private boolean broadcastTopWinner;
+    private boolean broadcastWin;
+    private boolean broadcastLoss;
 
     private Material frameBlock;
     private Material redBlock;
@@ -922,12 +924,18 @@ public final class RouletteManager {
                 }
             }
 
+            if (payout > 0 && broadcastWin) {
+                Bukkit.broadcastMessage(color(replace(text("messages.roulette.gameplay.win-broadcast", "&6[Roulette] &f%player% won &a$%payout% &fon %color%!"), Map.of("%player%", name, "%payout%", MONEY.format(payout), "%color%", win.displayName()))));
+            } else if (payout <= 0 && broadcastLoss) {
+                Bukkit.broadcastMessage(color(replace(text("messages.roulette.gameplay.lose-broadcast", "&6[Roulette] &f%player% lost &c$%amount% &fon %color%."), Map.of("%player%", name, "%amount%", MONEY.format(bet.amount()), "%color%", bet.color().displayName()))));
+            }
+
             if (payout > 0 && (topWinner == null || payout > topWinner.payout)) {
                 topWinner = new ResultEntry(name, win, payout, net);
             }
         }
 
-        if (broadcastTopWinner && topWinner != null) {
+        if (broadcastTopWinner && !broadcastWin && topWinner != null) {
             Bukkit.broadcastMessage(color(replace(text("messages.roulette.gameplay.top-winner-broadcast", "&6[Roulette] &f%player% won &a$%payout% &fon %color%!"), Map.of(
                     "%player%", topWinner.player,
                     "%payout%", MONEY.format(topWinner.payout),
@@ -1579,6 +1587,8 @@ public final class RouletteManager {
         this.maxPayout = plugin.getConfig().getDouble("roulette.max-payout", -1.0);
         this.fireworksPerWinner = Math.max(1, plugin.getConfig().getInt("roulette.fireworks-per-winner", 1));
         this.broadcastTopWinner = plugin.getConfig().getBoolean("roulette.broadcast-top-winner", true);
+        this.broadcastWin = plugin.getConfig().getBoolean("roulette.announcements.broadcast-win", false);
+        this.broadcastLoss = plugin.getConfig().getBoolean("roulette.announcements.broadcast-loss", false);
 
         this.frameBlock = parseMaterial(plugin.getConfig().getString("roulette.blocks.frame"), Material.STONE_BRICKS);
         this.redBlock = parseMaterial(plugin.getConfig().getString("roulette.blocks.red"), Material.RED_CONCRETE);
@@ -1620,7 +1630,7 @@ public final class RouletteManager {
                     }
                     yield v;
                 }
-                case "roulette.broadcast-top-winner" -> parseBoolean(raw);
+                case "roulette.broadcast-top-winner", "roulette.announcements.broadcast-win", "roulette.announcements.broadcast-loss" -> parseBoolean(raw);
                 case "roulette.blocks.frame", "roulette.blocks.red", "roulette.blocks.black", "roulette.blocks.green", "roulette.blocks.selector" -> {
                     Material m = Material.matchMaterial(raw);
                     yield m != null && m.isBlock() ? m.name() : null;

@@ -61,6 +61,7 @@ public final class MinesManager {
     private boolean broadcastStart;
     private boolean broadcastCashout;
     private boolean broadcastWin;
+    private boolean broadcastLoss;
     private boolean sendWelcomeOnStart;
 
     public MinesManager(
@@ -119,6 +120,7 @@ public final class MinesManager {
         this.broadcastStart = plugin.getConfig().getBoolean("minegame.announcements.broadcast-start", false);
         this.broadcastCashout = plugin.getConfig().getBoolean("minegame.announcements.broadcast-cashout", false);
         this.broadcastWin = plugin.getConfig().getBoolean("minegame.announcements.broadcast-win", false);
+        this.broadcastLoss = plugin.getConfig().getBoolean("minegame.announcements.broadcast-loss", false);
         this.sendWelcomeOnStart = plugin.getConfig().getBoolean("minegame.announcements.send-welcome-on-start", true);
     }
 
@@ -847,6 +849,12 @@ public final class MinesManager {
         player.sendMessage(color(replaceVars(messageKey, Map.of(
                 "%wager%", MONEY_FORMAT.format(game.wager())
         ))));
+        if (broadcastLoss) {
+            Bukkit.broadcastMessage(color(prefixed(resolveMessage("messages.minegame.gameplay.lost-broadcast", "messages.minegame.gameplay.lost", Map.of(
+                    "%player%", player.getName(),
+                    "%wager%", MONEY_FORMAT.format(game.wager())
+            )))));
+        }
         revealMines(game);
         cancelAndCleanup(game);
         scheduleStationReset(game.station());
@@ -1149,6 +1157,7 @@ public final class MinesManager {
                  "minegame.announcements.broadcast-start",
                  "minegame.announcements.broadcast-cashout",
                  "minegame.announcements.broadcast-win",
+                 "minegame.announcements.broadcast-loss",
                  "minegame.announcements.send-welcome-on-start",
                  "minegame.casino-frame-activation-distance",
                  "minegame.hologram.enabled",
@@ -1242,7 +1251,8 @@ public final class MinesManager {
                         "minegame.announcements.broadcast-start",
                         "minegame.announcements.broadcast-cashout",
                         "minegame.announcements.broadcast-win",
-                        "minegame.announcements.send-welcome-on-start" -> parseBoolean(raw);
+                        "minegame.announcements.broadcast-loss",
+                 "minegame.announcements.send-welcome-on-start" -> parseBoolean(raw);
                 case "minegame.game.title-prefix" -> raw;
                 case "minegame.board.hidden-block", "minegame.board.safe-reveal-block", "minegame.board.mine-reveal-block", "minegame.board.frame-block", "minegame.board.station-block" -> {
                     Material material = Material.matchMaterial(raw);

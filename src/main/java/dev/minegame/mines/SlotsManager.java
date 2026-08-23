@@ -69,6 +69,8 @@ public final class SlotsManager {
     private Material outerFrameBlock;
     private Material innerFrameBlock;
     private Material winningBlock;
+    private boolean broadcastWin;
+    private boolean broadcastLoss;
     private boolean betButtonsEnabled;
     private Material betButtonMaterial;
     private double betAdjustPercent;
@@ -863,12 +865,14 @@ public final class SlotsManager {
                         "%xmult%", MONEY.format(multiplier),
                         "%profit%", MONEY.format(profit)
                 ))));
+                if (broadcastWin) Bukkit.broadcastMessage(color(replace(text("messages.slots.gameplay.win-broadcast", "&e[Slots] &f%player% won &6$%payout% &f(%xmult%x)!"), Map.of("%player%", player.getName(), "%payout%", MONEY.format(payout), "%xmult%", MONEY.format(multiplier)))));
                 launchWinnerFireworks(runtime, player.getUniqueId());
             } else {
                 player.sendMessage(color(replace(text(
                         "messages.slots.gameplay.lose",
                         "&cNo payout this spin. Wager lost: &6$%amount%"
                 ), Map.of("%amount%", MONEY.format(runtime.wager)))));
+                if (broadcastLoss) Bukkit.broadcastMessage(color(replace(text("messages.slots.gameplay.lose-broadcast", "&e[Slots] &f%player% lost &6$%amount% &fon a spin."), Map.of("%player%", player.getName(), "%amount%", MONEY.format(runtime.wager)))));
             }
         }
 
@@ -1413,6 +1417,8 @@ public final class SlotsManager {
         this.outerFrameBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.outer-frame"), Material.STONE);
         this.innerFrameBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.inner-frame"), Material.REDSTONE_LAMP);
         this.winningBlock = parseMaterial(plugin.getConfig().getString("slots.blocks.winning"), Material.DIAMOND_BLOCK);
+        this.broadcastWin = plugin.getConfig().getBoolean("slots.announcements.broadcast-win", false);
+        this.broadcastLoss = plugin.getConfig().getBoolean("slots.announcements.broadcast-loss", false);
         this.betButtonsEnabled = plugin.getConfig().getBoolean("slots.bet-buttons.enabled", true);
         this.betButtonMaterial = parseMaterial(plugin.getConfig().getString("slots.bet-buttons.material"), Material.STONE_BUTTON);
         this.betAdjustPercent = Math.max(0.0, Math.min(100.0, plugin.getConfig().getDouble("slots.bet-buttons.adjust-percent", 25.0)));
@@ -1519,7 +1525,7 @@ public final class SlotsManager {
                     Material material = Material.matchMaterial(raw);
                     yield material != null && material.isBlock() ? material.name() : null;
                 }
-                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled" -> parseBoolean(raw);
+                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled", "slots.announcements.broadcast-win", "slots.announcements.broadcast-loss" -> parseBoolean(raw);
                 case "slots.bet-buttons.adjust-percent" -> {
                     double value = Double.parseDouble(raw);
                     yield value >= 0.0 && value <= 100.0 ? value : null;

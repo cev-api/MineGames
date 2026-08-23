@@ -33,6 +33,7 @@ minegame:
     broadcast-start: false
     broadcast-cashout: false
     broadcast-win: false
+    broadcast-loss: false
     send-welcome-on-start: true
   effects:
     fireworks-on-win: true
@@ -47,6 +48,9 @@ minegame:
     view-range: 20.0
 
 roulette:
+  announcements:
+    broadcast-win: false
+    broadcast-loss: false
   board-size: 13
   red-percent: 48.61
   black-percent: 48.61
@@ -84,6 +88,9 @@ roulette:
     interval-ticks: 6
 
 slots:
+  announcements:
+    broadcast-win: false
+    broadcast-loss: false
   reel-count: 3
   row-count: 1
   cost-per-spin: 100.0
@@ -313,6 +320,10 @@ messages:
       win-private: '&aWon: &6$%payout% &7(%xmult%x) &7| &a+$%profit% &7| &f%color%'
       lose-private: '&cLost: &6$%amount% &7| &f%color%'
       top-winner-broadcast: '&6[Roulette] &f%player% won &a$%payout% &fon %color%!'
+      win-broadcast: '&6[Roulette] &f%player% won &a$%payout% &fon %color%!'
+      lose-broadcast: '&6[Roulette] &f%player% lost &c$%amount% &fon %color%.'
+      win-broadcast: '&6[Roulette] &f%player% won &a$%payout% &fon %color%!'
+      lose-broadcast: '&6[Roulette] &f%player% lost &c$%amount% &fon %color%.'
       result-landed-on: '&eLanded on %color%'
       result-entry: '%profit_color%%profit_prefix%$%net% &7| &f%player% &7| %color_code%%color%
         &7| &6$%payout%'
@@ -393,6 +404,12 @@ messages:
       spin-charged: '&aSpin started for &6$%amount%&a. Good luck!'
       win: '&aYou hit &f%wins% &awinning blocks and won &6$%payout% &7(%xmult%x) &7| &a+$%profit%'
       lose: '&cNo payout this spin. Wager lost: &6$%amount%'
+      win-broadcast: '&e[Slots] &f%player% won &6$%payout% &f(%xmult%x)!'
+      lose-broadcast: '&e[Slots] &f%player% lost &6$%amount% &fon a spin.'
+      win-broadcast: '&e[Slots] &f%player% won &6$%payout% &f(%xmult%x)!'
+      lose-broadcast: '&e[Slots] &f%player% lost &6$%amount% &fon a spin.'
+      win-broadcast: '&e[Slots] &f%player% won &6$%payout% &f(%xmult%x)!'
+      lose-broadcast: '&e[Slots] &f%player% lost &6$%amount% &fon a spin.'
       result-header: '&e%player%''s result'
       result-wins: '&7Winning blocks: &b%wins%'
       result-payout: '&7Payout: &6$%payout% &7(%xmult%x)'

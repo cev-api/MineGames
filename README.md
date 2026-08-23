@@ -46,7 +46,15 @@ Output jar: `target/minegames-1.x.x.jar`
 2. Roulette station: stand at board center and run `/rouletteadmin create`
 3. Slots station: stand where you want the machine and run `/slotsadmin create [3-8] [1|2]`
 
-Join gifts are also supported. New players can receive a configurable welcome payout once, with the message and amount controlled in `config.yml` and via `/minegamesjoin`.
+## Casino Settings GUI
+
+Operators can open the inventory-based settings menu with:
+
+```text
+/casinogui
+```
+
+The GUI includes MineGame, Roulette, and Slots. Select a game to edit global settings, browse its stations, and edit supported per-station overrides. Global changes override existing station settings. Previous/Next navigate settings pages, and Back/Stations provide navigation.
 
 ## Gameplay
 
@@ -128,6 +136,11 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - Toggles:
 1. `/minegameadmin holo <on|off>`
 2. `/minegameadmin debug <on|off>`
+- Public result announcements:
+1. `/rouletteadmin set global announcements.broadcast-win <true|false>`
+2. `/rouletteadmin set global announcements.broadcast-loss <true|false>`
+3. `/slotsadmin set global announcements.broadcast-win <true|false>`
+4. `/slotsadmin set global announcements.broadcast-loss <true|false>`
 - Global config:
 1. `/minegameadmin set [global] <path> <value>`
 2. `/minegameadmin set [global] <path>` (shows current value)
@@ -155,7 +168,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - Global config:
 1. `/rouletteadmin set [global] <path> <value>`
 2. `/rouletteadmin set [global] <path>` (shows current value)
-3. `/rouletteadmin set global <path> <value>` forces a global change even when standing near a station
+3. Global settings override existing station overrides; for example, `/rouletteadmin set global announcements.broadcast-win true`
 - Per-station board cosmetics (or all stations):
 1. `/rouletteadmin setframe [all] <BLOCK|reset>`
 2. `/rouletteadmin setred [all] <BLOCK|reset>`
@@ -183,7 +196,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 - Global config:
 1. `/slotsadmin set [global] <path> <value>`
 2. `/slotsadmin set [global] <path>` (shows current value)
-3. `/slotsadmin set global <path> <value>` forces a global change even when standing near a station
+3. Global settings override existing station overrides; for example, `/slotsadmin set global announcements.broadcast-win true`
 - Per-station cosmetics (or all stations):
 1. `/slotsadmin setouterframe [all] <BLOCK|reset>`
 2. `/slotsadmin setinnerframe [all] <BLOCK|reset>`
@@ -257,6 +270,7 @@ These commands select a station by the same number shown by the corresponding `l
 - Restore the original location: add `remove`, for example `/slotsadmin hologramsign remove 2`
 
 Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holograms use fixed surface orientation and can be moved by running the assignment command again. Set `hologram.see-through-walls` to `true` or `false` to control wall visibility.
+
 ## Notes
 
 - `set ...` commands edit the nearest station when the setting is station-local, unless you use `set global ...` to force a global default.

@@ -105,6 +105,8 @@ public final class MinesTabCompleter implements TabCompleter {
                         "hologram-section-gap",
                         "fireworks-per-winner",
                         "broadcast-top-winner",
+                        "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "blocks.frame",
                         "blocks.red",
                         "blocks.black",
@@ -137,6 +139,8 @@ public final class MinesTabCompleter implements TabCompleter {
                         "hologram-section-gap",
                         "fireworks-per-winner",
                         "broadcast-top-winner",
+                        "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "blocks.frame",
                         "blocks.red",
                         "blocks.black",
@@ -145,7 +149,7 @@ public final class MinesTabCompleter implements TabCompleter {
                 ));
             }
             if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
-                if (args[1].equalsIgnoreCase("broadcast-top-winner")) {
+                if (args[1].equalsIgnoreCase("broadcast-top-winner") || args[1].equalsIgnoreCase("announcements.broadcast-win") || args[1].equalsIgnoreCase("announcements.broadcast-loss")) {
                     return filterPrefix(args[2], Arrays.asList("true", "false", "on", "off"));
                 }
                 if (args[1].startsWith("blocks.")) {
@@ -215,6 +219,8 @@ public final class MinesTabCompleter implements TabCompleter {
                         "global",
                         "reel-count",
                         "row-count",
+                        "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "cost-per-spin",
                         "spin-seconds",
                         "stop-interval-ticks",
@@ -248,6 +254,8 @@ public final class MinesTabCompleter implements TabCompleter {
                 return filterPrefix(args[2], Arrays.asList(
                         "reel-count",
                         "row-count",
+                        "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "cost-per-spin",
                         "spin-seconds",
                         "stop-interval-ticks",
@@ -278,6 +286,9 @@ public final class MinesTabCompleter implements TabCompleter {
                 ));
             }
             if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
+                if (args[1].equalsIgnoreCase("announcements.broadcast-win") || args[1].equalsIgnoreCase("announcements.broadcast-loss") || args[1].equalsIgnoreCase("frame-animation.enabled") || args[1].equalsIgnoreCase("bet-buttons.enabled")) {
+                    return filterPrefix(args[2], Arrays.asList("true", "false", "on", "off"));
+                }
                 if (args[1].equalsIgnoreCase("reel-count")) return filterPrefix(args[2], Arrays.asList("3", "4", "5", "6", "7", "8"));
                 if (args[1].equalsIgnoreCase("row-count")) return filterPrefix(args[2], Arrays.asList("1", "2"));
                 if (args[1].equalsIgnoreCase("frame-animation.enabled")) {
@@ -336,6 +347,7 @@ public final class MinesTabCompleter implements TabCompleter {
                         "announcements.broadcast-start",
                         "announcements.broadcast-cashout",
                         "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "announcements.send-welcome-on-start",
                         "casino-frame-activation-distance",
                         "hologram.enabled",
@@ -372,6 +384,7 @@ public final class MinesTabCompleter implements TabCompleter {
                         "announcements.broadcast-start",
                         "announcements.broadcast-cashout",
                         "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "announcements.send-welcome-on-start",
                         "casino-frame-activation-distance",
                         "hologram.enabled",
@@ -444,6 +457,7 @@ public final class MinesTabCompleter implements TabCompleter {
                         "announcements.broadcast-start",
                         "announcements.broadcast-cashout",
                         "announcements.broadcast-win",
+                        "announcements.broadcast-loss",
                         "announcements.send-welcome-on-start",
                         "casino-frame-activation-distance",
                         "hologram.enabled",
