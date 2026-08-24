@@ -35,7 +35,10 @@ public final class SlotStationStorage {
             BlockFace facing = BlockFace.valueOf(String.valueOf(item.containsKey("facing") ? item.get("facing") : "NORTH"));
             int reelCount = Integer.parseInt(String.valueOf(item.containsKey("reelCount") ? item.get("reelCount") : 3));
             int rowCount = Integer.parseInt(String.valueOf(item.containsKey("rowCount") ? item.get("rowCount") : 1));
-            String outerFrameBlock = item.containsKey("outerFrameBlock") ? String.valueOf(item.get("outerFrameBlock")) : null;
+            boolean shelfMode = Boolean.parseBoolean(String.valueOf(item.containsKey("shelfMode") ? item.get("shelfMode") : false));
+            int shelfCount = Integer.parseInt(String.valueOf(item.containsKey("shelfCount") ? item.get("shelfCount") : (shelfMode ? reelCount : 0)));
+            if (shelfMode && !item.containsKey("shelfCount")) reelCount *= 3;
+           String outerFrameBlock = item.containsKey("outerFrameBlock") ? String.valueOf(item.get("outerFrameBlock")) : null;
             String innerFrameBlock = item.containsKey("innerFrameBlock") ? String.valueOf(item.get("innerFrameBlock")) : null;
             String winningBlock = item.containsKey("winningBlock") ? String.valueOf(item.get("winningBlock")) : null;
             Boolean frameAnimEnabled = item.containsKey("frameAnimEnabled")
@@ -91,7 +94,9 @@ public final class SlotStationStorage {
                     betButtonsEnabled,
                     betButtonMaterial,
                     betAdjustPercent,
-                    currentBet
+                    currentBet,
+                    shelfMode,
+                    shelfCount
             );
             stations.put(station.key(), station);
         }
@@ -109,6 +114,8 @@ public final class SlotStationStorage {
             map.put("facing", station.facing().name());
             map.put("reelCount", station.reelCount());
             map.put("rowCount", station.rowCount());
+            if (station.shelfMode()) { map.put("shelfMode", true); map.put("shelfCount", station.shelfCount()); }
+            if (station.shelfMode()) { map.put("shelfMode", true); map.put("shelfCount", station.shelfCount()); }
             if (station.outerFrameBlock() != null) {
                 map.put("outerFrameBlock", station.outerFrameBlock());
             }

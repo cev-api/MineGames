@@ -36,6 +36,7 @@ import org.bukkit.entity.Firework;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -143,12 +144,15 @@ public final class SlotsManager {
         createStation(player, requestedReelCount, 1);
     }
 
-    public void createStation(Player player, int requestedReelCount, int requestedRowCount) {
-        int reelCount = requestedReelCount <= 0 ? this.reelCount : Math.max(3, Math.min(8, requestedReelCount));
-        int rowCount = Math.max(1, Math.min(2, requestedRowCount));
+    public void createStation(Player player, int requestedReelCount, int requestedRowCount) { createStation(player, requestedReelCount, requestedRowCount, false); }
+
+    public void createStation(Player player, int requestedReelCount, int requestedRowCount, boolean shelfMode) {
+        int shelfCount = shelfMode ? Math.max(1, Math.min(32, requestedReelCount)) : 0;
+        int reelCount = shelfMode ? shelfCount * 3 : (requestedReelCount <= 0 ? this.reelCount : Math.max(3, Math.min(8, requestedReelCount)));
+        int rowCount = shelfMode ? Math.max(1, Math.min(16, requestedRowCount)) : Math.max(1, Math.min(2, requestedRowCount));
         BlockFace facing = yawToCardinal(player.getLocation().getYaw());
         Block frontBlock = player.getLocation().getBlock().getRelative(facing);
-        int totalWidth = reelCount + 2;
+        int totalWidth = (shelfMode ? shelfCount : reelCount) + 2;
         Block leftBottom = frontBlock.getRelative(rotateLeft(facing), totalWidth / 2);
         SlotStationData station = new SlotStationData(
                 player.getWorld().getName(),
@@ -158,7 +162,7 @@ public final class SlotsManager {
                 facing,
                 reelCount,
                 rowCount,
-                                                null, null, null, null, null, null, null, null, null, null, null, null, null
+                                                null, null, null, null, null, null, null, null, null, null, null, null, null, shelfMode, shelfCount
         );
         captureStationBlocksIfNeeded(station);
         stationStorage.upsert(station);
@@ -403,7 +407,7 @@ public final class SlotsManager {
     }
 
     public SlotsGeometry geometryForStation(SlotStationData station) {
-        return new SlotsGeometry(station, leverPlacement);
+        return new SlotsGeometry(station, leverPlacement, shelfCasinoFrame());
     }
 
     public boolean isStationActive(SlotStationData station) {
@@ -918,12 +922,20 @@ public final class SlotsManager {
             cell.block().setType(visualInnerFrameBlock(runtime.station), false);
         }
         for (int row = 0; row < runtime.station.rowCount(); row++) {
-            for (int col = 0; col < runtime.station.reelCount(); col++) {
-                geometry.reelBlock(col, row).setType(runtime.currentSymbols.get(row).get(col), false);
-            }
+            if (runtime.station.shelfMode()) {
+                for (int shelf = 0; shelf < runtime.station.shelfCount(); shelf++) renderShelfSymbols(geometry.reelBlock(shelf * 3, row), runtime.currentSymbols.get(row), shelf * 3, runtime.station.facing().getOppositeFace());
+            } else for (int col = 0; col < runtime.station.reelCount(); col++) geometry.reelBlock(col, row).setType(runtime.currentSymbols.get(row).get(col), false);
         }
         configureLever(geometry.leverBlock(), runtime.station);
         configureBetButtons(geometry, runtime.station);
+    }
+
+    private void renderShelfSymbols(Block block, List<Material> symbols, int offset, BlockFace facing) {
+        block.setType(shelfBlock(), false);
+        if (block.getBlockData() instanceof org.bukkit.block.data.Directional directional) { directional.setFacing(facing); block.setBlockData(directional, false); }
+        if (!(block.getState() instanceof org.bukkit.block.Shelf shelf)) return;
+        for (int slot = 0; slot < 3; slot++) shelf.getSnapshotInventory().setItem(slot, new ItemStack(symbols.get(offset + slot)));
+        shelf.update(true, false);
     }
 
     private void updateSpinLights(SlotRuntime runtime) {
@@ -986,7 +998,7 @@ public final class SlotsManager {
     }
 
     private void configureLever(Block leverBlock, SlotStationData station) {
-        SlotsGeometry geometry = new SlotsGeometry(station, leverPlacement);
+        SlotsGeometry geometry = new SlotsGeometry(station, leverPlacement, shelfCasinoFrame());
         leverBlock.setType(Material.LEVER, false);
         if (leverBlock.getBlockData() instanceof Switch leverData) {
             leverData.setAttachedFace(FaceAttachable.AttachedFace.WALL);
@@ -1180,7 +1192,7 @@ public final class SlotsManager {
         if (restoreStorage.has(station.key())) {
             return;
         }
-        restoreStorage.captureIfAbsent(station.key(), new SlotsGeometry(station, leverPlacement).allBlocks());
+        restoreStorage.captureIfAbsent(station.key(), new SlotsGeometry(station, leverPlacement, shelfCasinoFrame()).allBlocks());
     }
 
     private SlotRuntime runtimeForLever(Block leverBlock) {
@@ -1358,8 +1370,8 @@ public final class SlotsManager {
         // Clear old machine area (using PREVIOUS geometry) since the restore snapshot
         // only covers the area that was captured, not the full old machine.
         if (previous != null) {
-            SlotsGeometry oldGeometry = new SlotsGeometry(previous, leverPlacement);
-            SlotsGeometry newGeometry = new SlotsGeometry(station, leverPlacement);
+            SlotsGeometry oldGeometry = new SlotsGeometry(previous, leverPlacement, shelfCasinoFrame());
+            SlotsGeometry newGeometry = new SlotsGeometry(station, leverPlacement, shelfCasinoFrame());
             Set<String> newKeys = new HashSet<>();
             for (Block b : newGeometry.allBlocks()) newKeys.add(slotKey(b));
             for (Block block : oldGeometry.allBlocks()) {
@@ -1453,6 +1465,13 @@ public final class SlotsManager {
         }
     }
 
+    private Material shelfBlock() {
+        Material material = Material.matchMaterial(plugin.getConfig().getString("slots.shelf-mode.block", "PALE_OAK_SHELF"));
+        return material != null && material.name().endsWith("_SHELF") && material != Material.CHISELED_BOOKSHELF ? material : Material.PALE_OAK_SHELF;
+    }
+
+    private boolean shelfCasinoFrame() { return plugin.getConfig().getBoolean("slots.shelf-mode.casino-frame", true); }
+
     private double costPerSpinFor(SlotStationData station) {
         return station.costPerSpin() != null ? Math.max(0.01, station.costPerSpin()) : costPerSpin;
     }
@@ -1532,11 +1551,11 @@ public final class SlotsManager {
                 case "slots.lever-placement" -> normalizeLeverPlacement(raw);
                 case "slots.spin-light-mode" -> normalizeSpinLightMode(raw);
                 case "slots.blocks.outer-frame", "slots.blocks.inner-frame", "slots.blocks.winning",
-                        "slots.frame-animation.block", "slots.bet-buttons.material" -> {
+                        "slots.frame-animation.block", "slots.bet-buttons.material", "slots.shelf-mode.block" -> {
                     Material material = Material.matchMaterial(raw);
                     yield material != null && material.isBlock() ? material.name() : null;
                 }
-                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled", "slots.announcements.broadcast-win", "slots.announcements.broadcast-loss", "slots.hologram.enabled" -> parseBoolean(raw);
+                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled", "slots.announcements.broadcast-win", "slots.announcements.broadcast-loss", "slots.hologram.enabled", "slots.shelf-mode.casino-frame" -> parseBoolean(raw);
                 case "slots.bet-buttons.adjust-percent" -> {
                     double value = Double.parseDouble(raw);
                     yield value >= 0.0 && value <= 100.0 ? value : null;
@@ -1852,7 +1871,7 @@ public final class SlotsManager {
         }
 
         private SlotsGeometry geometry() {
-            return new SlotsGeometry(station, manager.leverPlacement);
+            return new SlotsGeometry(station, manager.leverPlacement, manager.shelfCasinoFrame());
         }
     }
 }

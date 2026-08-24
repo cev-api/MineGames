@@ -40,7 +40,7 @@ public final class SlotsAdminCommand implements CommandExecutor {
         if (args.length == 0) {
             player.sendMessage(slotsManager.colorize(slotsManager.text(
                     "messages.slots.command.admin-usage",
-                    "&6Usage: &f/slotsadmin <command>\n&7create remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
+                    "&6Usage: &f/slotsadmin <command>\n&7create [3-8] [1|2] | create shelves <1-32>\n&7remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
             )));
             return true;
         }
@@ -48,11 +48,12 @@ public final class SlotsAdminCommand implements CommandExecutor {
         switch (args[0].toLowerCase()) {
             case "hologramsign" -> handleHologramSign(player, args);
             case "create" -> {
-                int reelCount = 3;
+                boolean shelfMode = args.length >= 2 && (args[1].equalsIgnoreCase("shelf") || args[1].equalsIgnoreCase("shelves"));
+                int reelCount = shelfMode ? 1 : 3;
                 int rowCount = 1;
-                if (args.length >= 2) {
+                if (args.length >= (shelfMode ? 3 : 2)) {
                     try {
-                        reelCount = Integer.parseInt(args[1]);
+                        reelCount = Integer.parseInt(args[shelfMode ? 2 : 1]);
                     } catch (NumberFormatException ex) {
                         player.sendMessage(slotsManager.colorize(slotsManager.text(
                                 "messages.slots.command.reel-count-not-number",
@@ -61,9 +62,9 @@ public final class SlotsAdminCommand implements CommandExecutor {
                         return true;
                     }
                 }
-                if (args.length >= 3) {
+                if (args.length >= (shelfMode ? 4 : 3)) {
                     try {
-                        rowCount = Integer.parseInt(args[2]);
+                        rowCount = Integer.parseInt(args[shelfMode ? 3 : 2]);
                     } catch (NumberFormatException ex) {
                         player.sendMessage(slotsManager.colorize(slotsManager.text(
                                 "messages.slots.command.rows-not-number",
@@ -72,7 +73,7 @@ public final class SlotsAdminCommand implements CommandExecutor {
                         return true;
                     }
                 }
-                slotsManager.createStation(player, reelCount, rowCount);
+                slotsManager.createStation(player, reelCount, rowCount, shelfMode);
             }
             case "remove" -> {
                 if (args.length < 2) {
@@ -180,7 +181,7 @@ public final class SlotsAdminCommand implements CommandExecutor {
             case "reload" -> slotsManager.reloadConfig(player);
             default -> player.sendMessage(slotsManager.colorize(slotsManager.text(
                     "messages.slots.command.admin-usage",
-                    "&6Usage: &f/slotsadmin <command>\n&7create remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
+                    "&6Usage: &f/slotsadmin <command>\n&7create [3-8] [1|2] | create shelves <1-32>\n&7remove regen list set\n&7hologramsign setouterframe setinnerframe\n&7setwinning casinoframe housebalance\n&7housewithdraw reload"
             )));
         }
         return true;

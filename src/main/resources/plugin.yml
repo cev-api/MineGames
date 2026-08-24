@@ -24,7 +24,7 @@ commands:
     usage: /rouletteadmin <create|remove|regen|list|set|casinoframe|reload>
   slotsadmin:
     description: Manage slots stations.
-    usage: /slotsadmin <create [3-8] [1|2]|remove|regen|list|set|hologramsign|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
+    usage: /slotsadmin <create [3-8] [1|2]|create shelves <1-32>|remove|regen|list|set|hologramsign|setouterframe|setinnerframe|setwinning|casinoframe|housebalance|housewithdraw|reload>
   fighter:
     description: Bet on a nearby Fights arena.
     usage: /fighter <1|2> <amount>

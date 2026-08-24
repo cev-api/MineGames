@@ -136,6 +136,9 @@ slots:
     enabled: true
     material: STONE_BUTTON
     adjust-percent: 25.0
+  shelf-mode:
+    block: PALE_OAK_SHELF
+    casino-frame: true
   spin-seconds: 5
   stop-interval-ticks: 12
   result-seconds: 5

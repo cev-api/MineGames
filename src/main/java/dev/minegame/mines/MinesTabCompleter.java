@@ -164,15 +164,9 @@ public final class MinesTabCompleter implements TabCompleter {
                         "create", "remove", "regen", "list", "set", "hologramsign", "setouterframe", "setinnerframe", "setwinning", "casinoframe", "housebalance", "housewithdraw", "reload"
                 ));
             }
-            if (args.length == 2 && args[0].equalsIgnoreCase("create")) {
-                return filterPrefix(args[1], Arrays.asList("3", "4", "5", "6", "7", "8"));
-            }
-            if (args.length == 3 && args[0].equalsIgnoreCase("create")) {
-                return filterPrefix(args[2], Arrays.asList("1", "2"));
-            }
-            if (args.length == 4 && args[0].equalsIgnoreCase("create")) {
-                return filterPrefix(args[3], Arrays.asList("1", "2"));
-            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("create")) return filterPrefix(args[1], Arrays.asList("shelves", "3", "4", "5", "6", "7", "8"));
+            if (args.length == 3 && args[0].equalsIgnoreCase("create")) return args[1].equalsIgnoreCase("shelves") ? filterPrefix(args[2], Arrays.asList("1", "2", "3", "4", "5", "6", "8")) : filterPrefix(args[2], Arrays.asList("1", "2"));
+            if (args.length == 4 && args[0].equalsIgnoreCase("create") && args[1].equalsIgnoreCase("shelves")) return filterPrefix(args[3], Arrays.asList("1", "2", "3", "4", "5", "6", "8"));
             if (args.length == 2 && (args[0].equalsIgnoreCase("hologramsign"))) return filterPrefix(args[1], Arrays.asList("1", "2", "3", "4", "5"));
             if (args.length == 2 && args[0].equalsIgnoreCase("housewithdraw")) {
                 return filterPrefix(args[1], Arrays.asList("all", "10", "100", "1000"));

@@ -19,6 +19,7 @@ public final class SlotsGeometry {
     private final Vector right;
     private final Vector front;
     private final String leverPlacement;
+    private final boolean casinoFrame;
     private final int reelTopRow;
     private final int reelBottomRow;
     private final Set<String> outerFrameKeys = new HashSet<>();
@@ -29,9 +30,10 @@ public final class SlotsGeometry {
     private final String increaseButtonKey;
     private final String decreaseButtonKey;
 
-    public SlotsGeometry(SlotStationData station, String leverPlacement) {
+    public SlotsGeometry(SlotStationData station, String leverPlacement, boolean casinoFrame) {
         this.station = station;
         this.leverPlacement = leverPlacement == null ? "front_right_middle" : leverPlacement.toLowerCase();
+        this.casinoFrame = casinoFrame;
         Location location = station.originLocation();
         if (location == null) {
             throw new IllegalStateException("World missing for slots station " + station.key());
@@ -54,9 +56,8 @@ public final class SlotsGeometry {
         this.decreaseButtonKey = key(decreaseButton());
     }
 
-    public int totalWidth() {
-        return station.reelCount() + 2;
-    }
+    public int totalWidth() { return physicalReelCount() + 2; }
+    public int physicalReelCount() { return station.shelfMode() ? station.shelfCount() : station.reelCount(); }
 
     public int totalHeight() {
         return 4 + station.rowCount();
@@ -75,27 +76,20 @@ public final class SlotsGeometry {
     }
 
     public Block reelBlock(int reelIndex, int rowIndex) {
-        int row = rowIndex == 0 ? reelTopRow : reelBottomRow;
-        return blockAt(reelIndex + 1, row);
+        int row = station.shelfMode() ? reelTopRow + rowIndex : (rowIndex == 0 ? reelTopRow : reelBottomRow);
+        Block block = blockAt((station.shelfMode() ? reelIndex / 3 : reelIndex) + 1, row);
+        return station.shelfMode() ? block.getRelative(station.facing().getOppositeFace()) : block;
     }
 
     public List<Block> reelBlocks() {
         List<Block> blocks = new ArrayList<>();
-        for (int row = 0; row < station.rowCount(); row++) {
-            for (int i = 0; i < station.reelCount(); i++) {
-                blocks.add(reelBlock(i, row));
-            }
-        }
+        for (int row = 0; row < station.rowCount(); row++) for (int i = 0; i < physicalReelCount(); i++) blocks.add(reelBlock(station.shelfMode() ? i * 3 : i, row));
         return blocks;
     }
 
     public List<FrameCell> reelCells() {
         List<FrameCell> cells = new ArrayList<>();
-        for (int row = 0; row < station.rowCount(); row++) {
-            for (int i = 0; i < station.reelCount(); i++) {
-                cells.add(new FrameCell(reelBlock(i, row), i + 1, row == 0 ? reelTopRow : reelBottomRow));
-            }
-        }
+        for (int row = 0; row < station.rowCount(); row++) for (int i = 0; i < physicalReelCount(); i++) cells.add(new FrameCell(reelBlock(station.shelfMode() ? i * 3 : i, row), i + 1, row == 0 ? reelTopRow : reelBottomRow));
         return cells;
     }
 
@@ -108,6 +102,7 @@ public final class SlotsGeometry {
     }
 
     public List<FrameCell> outerFrameCells() {
+        if (station.shelfMode() && !casinoFrame) return List.of();
         List<FrameCell> cells = new ArrayList<>();
         for (int row = 0; row < totalHeight(); row++) {
             for (int col = 0; col < totalWidth(); col++) {
@@ -121,9 +116,10 @@ public final class SlotsGeometry {
     }
 
     public List<FrameCell> innerFrameCells() {
+        if (station.shelfMode() && !casinoFrame) return List.of();
         List<FrameCell> cells = new ArrayList<>();
         for (int row = 1; row < totalHeight() - 1; row++) {
-            boolean reelRow = row == reelTopRow || row == reelBottomRow;
+            boolean reelRow = station.shelfMode() ? row >= reelTopRow && row < reelTopRow + station.rowCount() : row == reelTopRow || row == reelBottomRow;
             for (int col = 1; col < totalWidth() - 1; col++) {
                 if (!reelRow) {
                     cells.add(new FrameCell(blockAt(col, row), col, row));
@@ -135,7 +131,7 @@ public final class SlotsGeometry {
 
     public Block leverBlock() {
         int col = leverAnchorColumn();
-        int row = reelTopRow;
+        int row = station.shelfMode() ? reelTopRow + (station.rowCount() - 1) / 2 : reelTopRow;
         Block anchor = blockAt(col, row);
         Vector offset = leverOffset();
         return world.getBlockAt(
@@ -227,6 +223,8 @@ public final class SlotsGeometry {
         }
         return totalWidth() - 1;
     }
+
+    private int reelCount() { return physicalReelCount(); }
 
     private Vector leverOffset() {
         if (leverPlacement.equals("right_middle")) {
