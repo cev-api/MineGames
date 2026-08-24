@@ -28,8 +28,8 @@ All games use Vault economy, support per-station cosmetics, holograms, and casin
 
 - Java 21
 - Paper 1.21+
-- Vault
-- A Vault-compatible economy plugin (for example EssentialsX Economy)
+- Vault (for example [VaultUnlocked](https://modrinth.com/plugin/vaultunlocked))
+- A Vault-compatible economy plugin (for example [EconomyProvider by ilius](https://modrinth.com/plugin/economyprovider-by-ilius))
 
 ## Build
 

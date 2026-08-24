@@ -58,6 +58,8 @@ public final class SlotsManager {
     private BukkitTask ticker;
 
     private double costPerSpin;
+    private double minBet;
+    private double maxBet;
     private int reelCount;
     private int rowCount;
     private int spinSeconds;
@@ -375,7 +377,8 @@ public final class SlotsManager {
                 if (runtime.phase == Phase.SPINNING) { player.sendMessage(color(text("messages.slots.gameplay.station-busy", "&cThat slots machine is already spinning."))); return; }
                 double current = Math.max(1.0, Math.round(currentBetFor(runtime.station)));
                 double factor = 1.0 + (increase ? 1.0 : -1.0) * betAdjustPercentFor(runtime.station) / 100.0;
-                double next = Math.max(1.0, Math.round(current * factor));
+                double next = Math.max(minBet, Math.round(current * factor));
+                if (maxBet >= 0.0D) next = Math.min(maxBet, next);
                 saveStation(runtime.station.withCurrentBet(next), false);
                 player.sendMessage(color(replace(text("messages.slots.gameplay.bet-adjusted", "&aSlots bet set to &6$%amount%&a."), Map.of("%amount%", MONEY.format(next)))));
                 return;
@@ -993,6 +996,10 @@ public final class SlotsManager {
     }
 
     private void updateHologram(SlotRuntime runtime) {
+        if (!plugin.getConfig().getBoolean("slots.hologram.enabled", true)) {
+            deleteHologram(runtime.station.key());
+            return;
+        }
         Location anchor = runtime.geometry().centerAbove(plugin.getConfig().getDouble("slots.hologram-height", 5.8));
         Location placed = placementStorage.get("slots", runtime.station.key());
         if (placed != null) anchor = placed;
@@ -1405,6 +1412,8 @@ public final class SlotsManager {
 
     private void loadConfig() {
         this.costPerSpin = Math.max(0.01, plugin.getConfig().getDouble("slots.cost-per-spin", 100.0));
+        this.minBet = Math.max(0.01, plugin.getConfig().getDouble("slots.min-bet", 1.0));
+        this.maxBet = plugin.getConfig().getDouble("slots.max-bet", -1.0);
         this.reelCount = Math.max(3, Math.min(8, plugin.getConfig().getInt("slots.reel-count", 3)));
         this.rowCount = Math.max(1, Math.min(2, plugin.getConfig().getInt("slots.row-count", 1)));
         this.spinSeconds = Math.max(1, plugin.getConfig().getInt("slots.spin-seconds", 5));
@@ -1505,6 +1514,8 @@ public final class SlotsManager {
                     yield value >= 1 && value <= 2 ? value : null;
                 }
                 case "slots.cost-per-spin",
+                        "slots.min-bet",
+                        "slots.max-bet",
                         "slots.activation-distance-from-frame",
                         "slots.max-payout",
                         "slots.hologram-height",
@@ -1525,7 +1536,7 @@ public final class SlotsManager {
                     Material material = Material.matchMaterial(raw);
                     yield material != null && material.isBlock() ? material.name() : null;
                 }
-                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled", "slots.announcements.broadcast-win", "slots.announcements.broadcast-loss" -> parseBoolean(raw);
+                case "slots.frame-animation.enabled", "slots.bet-buttons.enabled", "slots.announcements.broadcast-win", "slots.announcements.broadcast-loss", "slots.hologram.enabled" -> parseBoolean(raw);
                 case "slots.bet-buttons.adjust-percent" -> {
                     double value = Double.parseDouble(raw);
                     yield value >= 0.0 && value <= 100.0 ? value : null;

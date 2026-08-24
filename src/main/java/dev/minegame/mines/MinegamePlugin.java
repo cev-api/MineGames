@@ -80,7 +80,7 @@ public final class MinegamePlugin extends JavaPlugin {
         this.minesManager = new MinesManager(this, economy, stationStorage, minesRestoreStorage, houseBalanceStorage);
         this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, hologramPlacementStorage, rouletteRestoreStorage, houseBalanceStorage);
         this.slotsManager = new SlotsManager(this, economy, slotStationStorage, hologramPlacementStorage, slotsRestoreStorage, houseBalanceStorage);
-        this.fightsManager = new FightsManager(this, economy, fightStationStorage, hologramPlacementStorage, fightsRestoreStorage);
+        this.fightsManager = new FightsManager(this, economy, fightStationStorage, hologramPlacementStorage, fightsRestoreStorage, houseBalanceStorage);
         this.joinGiftManager = new JoinGiftManager(this, economy, joinGiftStorage);
         this.hologramManager = new HologramManager(this, minesManager, hologramPlacementStorage);
         this.hologramPlacementController = new HologramPlacementController(this, hologramPlacementStorage, minesManager, slotsManager, rouletteManager);

@@ -1203,6 +1203,10 @@ public final class RouletteManager {
     }
 
     private void updateHologram(StationRuntime runtime) {
+        if (!plugin.getConfig().getBoolean("roulette.hologram.enabled", true)) {
+            deleteHologram(runtime.station.key());
+            return;
+        }
         Location anchor = runtime.geometry(boardSizeFor(runtime.station)).centerAbove(plugin.getConfig().getDouble("roulette.hologram-height", 3.5));
         Location placed = placementStorage.get("roulette", runtime.station.key());
         if (placed != null) anchor = placed;
@@ -1630,7 +1634,7 @@ public final class RouletteManager {
                     }
                     yield v;
                 }
-                case "roulette.broadcast-top-winner", "roulette.announcements.broadcast-win", "roulette.announcements.broadcast-loss" -> parseBoolean(raw);
+                case "roulette.broadcast-top-winner", "roulette.announcements.broadcast-win", "roulette.announcements.broadcast-loss", "roulette.hologram.enabled" -> parseBoolean(raw);
                 case "roulette.blocks.frame", "roulette.blocks.red", "roulette.blocks.black", "roulette.blocks.green", "roulette.blocks.selector" -> {
                     Material m = Material.matchMaterial(raw);
                     yield m != null && m.isBlock() ? m.name() : null;

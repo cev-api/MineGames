@@ -48,6 +48,8 @@ public final class MinesManager {
     private double houseEdgePercent;
     private double maxMultiplier;
     private double maxPayout;
+    private double minBet;
+    private double maxBet;
     private int resetDelayTicks;
     private Material hiddenBlock;
     private Material safeRevealBlock;
@@ -107,6 +109,8 @@ public final class MinesManager {
         this.houseEdgePercent = plugin.getConfig().getDouble("minegame.game.house-edge-percent", 4.0D);
         this.maxMultiplier = plugin.getConfig().getDouble("minegame.game.max-multiplier", 25.0D);
         this.maxPayout = plugin.getConfig().getDouble("minegame.game.max-payout", -1.0D);
+        this.minBet = Math.max(0.01D, plugin.getConfig().getDouble("minegame.game.min-bet", 1.0D));
+        this.maxBet = plugin.getConfig().getDouble("minegame.game.max-bet", -1.0D);
         this.resetDelayTicks = plugin.getConfig().getInt("minegame.board.reset-delay-seconds", 3) * 20;
         this.hiddenBlock = parseMaterial(plugin.getConfig().getString("minegame.board.hidden-block"), Material.STONE);
         this.safeRevealBlock = parseMaterial(plugin.getConfig().getString("minegame.board.safe-reveal-block"), Material.DIAMOND_BLOCK);
@@ -337,7 +341,7 @@ public final class MinesManager {
             ))));
             return;
         }
-        if (wager <= 0D) {
+        if (wager < minBet || (maxBet >= 0D && wager > maxBet)) {
             msg(player, "messages.minegame.gameplay.invalid-wager");
             return;
         }
@@ -1150,6 +1154,8 @@ public final class MinesManager {
                  "minegame.game.house-edge-percent",
                  "minegame.game.max-multiplier",
                  "minegame.game.max-payout",
+                 "minegame.game.min-bet",
+                 "minegame.game.max-bet",
                  "minegame.game.title-prefix",
                  "minegame.effects.fireworks-on-win",
                  "minegame.effects.firework-count",
@@ -1222,7 +1228,11 @@ public final class MinesManager {
                     double value = Double.parseDouble(raw);
                     yield value >= 0.0 ? value : null;
                 }
-                case "minegame.game.max-payout" -> {
+                case "minegame.game.min-bet" -> {
+                    double value = Double.parseDouble(raw);
+                    yield value > 0.0 ? value : null;
+                }
+                case "minegame.game.max-bet", "minegame.game.max-payout" -> {
                     double value = Double.parseDouble(raw);
                     yield (value == -1.0 || value > 0.0) ? value : null;
                 }

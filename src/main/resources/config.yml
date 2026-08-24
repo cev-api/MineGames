@@ -28,6 +28,8 @@ minegame:
     house-edge-percent: 4.0
     max-multiplier: 0
     max-payout: -1
+    min-bet: 1.0
+    max-bet: -1
     title-prefix: '&6[MineGame] &f'
   announcements:
     broadcast-start: false
@@ -67,6 +69,8 @@ roulette:
   max-payout: -1
   max-bet-distance: 18.0
   activation-distance-from-frame: 20.0
+  hologram:
+    enabled: true
   hologram-height: 5
   hologram-line-spacing: 0.6
   hologram-title-gap: 0
@@ -89,16 +93,23 @@ roulette:
 
 fights:
   betting-seconds: 10
-  reveal-seconds: 5
   celebration-seconds: 5
+  hologram:
+    enabled: true
+    bet-display-mode: below_fighter # below_fighter or bottom
   hologram-line-spacing: 0.38
   hologram-view-range: 24.0
   max-fighters: 16
+  show-bettor-name-on-fighter: true
   fireworks-per-winner: 1
   fireworks-for-winning-bettors: true
   min-bet: 1.0
   max-bet: -1
   payout-multiplier: 1.9
+  max-payout: -1
+  announcements:
+    broadcast-win: false
+    broadcast-loss: false
   activation-distance: 24.0
   hologram-height: 5.5
   arena-style: fence # walls or fence
@@ -119,6 +130,12 @@ slots:
   reel-count: 3
   row-count: 1
   cost-per-spin: 100.0
+  min-bet: 1.0
+  max-bet: -1
+  bet-buttons:
+    enabled: true
+    material: STONE_BUTTON
+    adjust-percent: 25.0
   spin-seconds: 5
   stop-interval-ticks: 12
   result-seconds: 5
@@ -127,6 +144,8 @@ slots:
   spin-light-mode: flashing_fast
   max-payout: -1
   fireworks-per-win: 1
+  hologram:
+    enabled: true
   hologram-height: 5.8
   hologram-line-spacing: 0.6
   hologram-view-range: 20.0

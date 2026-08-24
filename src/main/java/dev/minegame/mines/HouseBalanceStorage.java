@@ -16,6 +16,10 @@ public final class HouseBalanceStorage {
     private double rouletteTotalWagered;
     private double rouletteTotalPayout;
 
+    private double fightsBalance;
+    private double fightsTotalWagered;
+    private double fightsTotalPayout;
+
     private double slotsBalance;
     private double slotsTotalWagered;
     private double slotsTotalPayout;
@@ -38,6 +42,10 @@ public final class HouseBalanceStorage {
         this.rouletteTotalWagered = yaml.getDouble("roulette.total-wagered", 0.0);
         this.rouletteTotalPayout = yaml.getDouble("roulette.total-payout", 0.0);
 
+        this.fightsBalance = yaml.getDouble("fights.balance", 0.0);
+        this.fightsTotalWagered = yaml.getDouble("fights.total-wagered", 0.0);
+        this.fightsTotalPayout = yaml.getDouble("fights.total-payout", 0.0);
+
         this.slotsBalance = yaml.getDouble("slots.balance", 0.0);
         this.slotsTotalWagered = yaml.getDouble("slots.total-wagered", 0.0);
         this.slotsTotalPayout = yaml.getDouble("slots.total-payout", 0.0);
@@ -51,6 +59,9 @@ public final class HouseBalanceStorage {
         yaml.set("roulette.balance", rouletteBalance);
         yaml.set("roulette.total-wagered", rouletteTotalWagered);
         yaml.set("roulette.total-payout", rouletteTotalPayout);
+        yaml.set("fights.balance", fightsBalance);
+        yaml.set("fights.total-wagered", fightsTotalWagered);
+        yaml.set("fights.total-payout", fightsTotalPayout);
         yaml.set("slots.balance", slotsBalance);
         yaml.set("slots.total-wagered", slotsTotalWagered);
         yaml.set("slots.total-payout", slotsTotalPayout);
@@ -76,6 +87,15 @@ public final class HouseBalanceStorage {
         rouletteBalance += cleanWager - cleanPayout;
         rouletteTotalWagered += cleanWager;
         rouletteTotalPayout += cleanPayout;
+        save();
+    }
+
+    public void recordFightsResult(double wager, double payout) {
+        double cleanWager = Math.max(0.0, wager);
+        double cleanPayout = Math.max(0.0, payout);
+        fightsBalance += cleanWager - cleanPayout;
+        fightsTotalWagered += cleanWager;
+        fightsTotalPayout += cleanPayout;
         save();
     }
 
@@ -118,6 +138,19 @@ public final class HouseBalanceStorage {
         save();
     }
 
+    public double withdrawFights(double amount) {
+        double allowed = Math.max(0.0, Math.min(amount, fightsBalance));
+        fightsBalance -= allowed;
+        save();
+        return allowed;
+    }
+
+    public void refundFightsWithdrawal(double amount) {
+        if (amount <= 0.0) return;
+        fightsBalance += amount;
+        save();
+    }
+
     public double withdrawSlots(double amount) {
         double allowed = Math.max(0.0, Math.min(amount, slotsBalance));
         slotsBalance -= allowed;
@@ -156,6 +189,10 @@ public final class HouseBalanceStorage {
     public double rouletteTotalPayout() {
         return rouletteTotalPayout;
     }
+
+    public double fightsBalance() { return fightsBalance; }
+    public double fightsTotalWagered() { return fightsTotalWagered; }
+    public double fightsTotalPayout() { return fightsTotalPayout; }
 
     public double slotsBalance() {
         return slotsBalance;
