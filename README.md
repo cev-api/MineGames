@@ -2,7 +2,7 @@
 
 ![0](https://i.imgur.com/NO1MpCA.png)
 
-MineGames is a Paper `1.21+` casino plugin with four game types:
+MineGames is a Paper `1.21+` casino plugin with five game types:
 
 1. **MineGame**: reveal safe blocks, avoid mines, cash out at your chosen point.
 
@@ -19,6 +19,8 @@ MineGames is a Paper `1.21+` casino plugin with four game types:
 ![5](https://i.imgur.com/cj5fCTH.png)
 
 4. **Fights**: wager on randomly equipped mobs battling inside a protected arena.
+
+5. **Chicken**: choose a coloured tile, cash out before lightning, and collect multiplier stars while a chicken roams the board.
 
 ![6](https://i.imgur.com/31TJ2ly.png)
 
@@ -86,6 +88,7 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
 3. Reels animate for a few seconds and then stop from left to right.
 4. Matching the winning block pays out based on how many appear or which payline lands.
 5. The station can be customized with outer frame, inner frame, winning block, row count, and lever-side frame animation.
+6. Shelf mode uses Minecraft shelves instead of solid reel blocks. Each shelf item slot is an independent reel; shelves can be placed side-by-side and stacked vertically with the same payouts, wager buttons, hologram, and optional casino frame as regular Slots.
 
 ### Fights
 
@@ -97,6 +100,14 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
 6. Set `fights.show-bettor-name-on-fighter` to show the bettor in the mob nameplate. Set `fights.fireworks-for-winning-bettors` to `true` (the default) to add fireworks from all four arena corners for winning bets.
 7. All rolled weapons, including tridents, use armor- and enchantment-aware damage calculations.
 
+### Chicken
+
+1. Stand near a Chicken board.
+2. Bet on a colour with /chicken <red|blue|gold|green> <amount>.
+3. The first bet opens the countdown. At game start, the board reshuffles red, blue, Gold Block, green, and black dead tiles before the chicken drops in.
+4. The multiplier rises continuously above the chicken. Nether Star pickups add the configured pickup bonus with sparkle and sound effects.
+5. Cash out with /chicken cashout or hit the lamp frame. Uncashed wagers win only on their selected colour; black/dead tiles pay nothing.
+6. Lightning timing is pre-rolled between the configured minimum and maximum. The randomness curve favours early/mid strikes by default.
 ## Winner Math & RNG
 
 1. **MineGame**
@@ -127,7 +138,12 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
    - Ranged attacks, including tridents, use the same isolated fighter damage path and apply armor/enchantment mitigation before health is reduced.
    - A winning bet pays `bet * fights.payout-multiplier * (fighter-count / 2)`. The configured multiplier and fighter count determine the potential payout shown on the hologram.
 
-5. **RNG notes**
+5. **Chicken**
+   - The colour/dead-tile layout and lightning countdown are pre-rolled before the chicken spawns.
+   - Lightning is sampled between the configured minimum and maximum in 0.1-second increments. A randomness curve of 1.0 is uniform; higher values favour earlier strikes.
+   - The chicken follows server-controlled roaming paths. Its path is visual only and cannot alter the pre-rolled lightning timing.
+   - The live multiplier grows continuously and every Nether Star adds the configured pickup bonus. A cash-out pays the live multiplier; an uncleared bet must also match the final colour and then receives that colour bonus.
+6. **RNG notes**
    - MineGame uses `Math.random()` for mine placement.
    - Roulette and Slots use a shared `java.util.Random` instance.
    - Fighter types, equipment materials, leather colors, enchantment choices, and enchantment levels use Java `ThreadLocalRandom` (with compatible enchantments shuffled before selection).
@@ -146,6 +162,9 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
 1. `/roulette <red|black|green> <amount>`
 - Fights:
 1. `/fighter <fighter-number> <amount>`
+- Chicken:
+1. /chicken <red|blue|gold|green> <amount>
+2. /chicken cashout
 
 ### MineGame Admin (`mine.admin`)
 
@@ -213,6 +232,7 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 
 - Station lifecycle:
 1. `/slotsadmin create [3-8] [1|2]`
+2. /slotsadmin create shelves <shelves-wide> <shelves-high> (each shelf item slot is an independent reel)
 2. `/slotsadmin remove`
 3. `/slotsadmin regen`
 4. `/slotsadmin list`
@@ -235,6 +255,18 @@ Primary command: `/minegameadmin` (legacy alias: `/mineadmin`)
 2. `/slotsadmin casinoframe [all] mode <idle_only|always>`
 3. `/slotsadmin casinoframe [all] <off|reset>`
 
+### Chicken Admin (chicken.admin)
+
+- Station lifecycle:
+1. /chickenadmin create [odd-size]
+2. /chickenadmin remove <number>
+3. /chickenadmin regen [number]
+4. /chickenadmin list
+5. /chickenadmin reload
+- Global config:
+1. /chickenadmin set <path> <value>
+2. /chickenadmin set <path> (shows current value)
+- Key settings: min/max lightning seconds, lightning randomness curve, multiplier growth, pickup multiplier, colour bonuses, dead-tile count, board materials, and hologram settings.
 ### Fights Admin (`fights.admin`)
 
 Primary command: `/fightadmin`
@@ -264,6 +296,7 @@ Primary command: `/fightadmin`
 - `roulette.admin` (default: op)
 - `slots.admin` (default: op)
 - `fights.admin` (default: op)
+- `chicken.admin` (default: op)
 
 ## Config Layout
 
@@ -282,10 +315,14 @@ Primary command: `/fightadmin`
 - Roulette:
 1. `roulette.*`
 2. `roulette-frame-animation.*`
+- Slots:
+1. `slots.*` (including `slots.shelf-mode.*`)
 - Fights:
 1. `fights.*`
 2. `fights.blocks.*`
 3. `fights.casino-frame-animation.*`
+- Chicken:
+1. `chicken.*`
 
 ## Distance / Activation / Hologram Settings
 
@@ -308,6 +345,12 @@ Primary command: `/fightadmin`
 5. `roulette.hologram-line-spacing`
 6. `roulette.hologram-title-gap`
 7. `roulette.hologram-section-gap`
+
+- Chicken board activation + hologram visibility:
+1. chicken.activation-distance
+2. chicken.hologram-view-range
+3. chicken.hologram-height
+4. chicken.hologram-line-spacing
 
 - Fights arena activation + hologram visibility:
 1. `fights.activation-distance`
@@ -342,6 +385,7 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - Holograms are configured with no-wrap text display behavior for more consistent spacing.
 - Fights support `walls` and `fence` arena styles. Fence mode is the default, uses connected spruce fences, and places the casino frame below them.
 - Fights fighters target only fighters in their own arena and are isolated from outside damage, projectiles, potions, mobs, portals, pickups, fire, lava, explosions, and despawning. They drop no items or experience.
+- Chicken boards block natural mob spawns, fluid flow, explosions, and non-admin building. Hitting the lamp frame cashes out an active Chicken bet.
 - All registered games block non-admin building inside their footprint and in the airspace above it. Lava/water buckets and fluid flow into games are cancelled, and protected game blocks cannot be damaged by explosions.
 - Removing Fights stations restores captured original blocks; `regen` rebuilds the station from current configuration.
 
@@ -354,10 +398,12 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - `plugins/MineGames/roulette_stations.yml` (Roulette stations + overrides)
 - `plugins/MineGames/slots_stations.yml` (Slots stations + overrides)
 - `plugins/MineGames/fights_stations.yml` (Fights stations)
+- `plugins/MineGames/chicken_stations.yml` (Chicken boards)
 - `plugins/MineGames/mines_restore.yml` (MineGame original-block snapshots for restore on station removal)
 - `plugins/MineGames/roulette_restore.yml` (Roulette original-block snapshots for restore on station removal)
 - `plugins/MineGames/slots_restore.yml` (Slots original-block snapshots for restore on station removal)
 - `plugins/MineGames/fights_restore.yml` (Fights original-block snapshots for restore on station removal)
+- `plugins/MineGames/chicken_restore.yml` (Chicken original-block snapshots for board removal)
 - `plugins/MineGames/house_balances.yml` (separate MineGame/Roulette house balance + wager/payout totals)
 
 ## License

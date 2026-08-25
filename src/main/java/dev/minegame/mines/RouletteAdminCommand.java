@@ -24,6 +24,12 @@ public final class RouletteAdminCommand implements CommandExecutor {
             rouletteManager.reloadConfig(sender);
             return true;
         }
+        if (!(sender instanceof Player) && args.length >= 2 && args[0].equalsIgnoreCase("set") && (args.length == 2 || args.length == 3 && args[1].equalsIgnoreCase("global"))) {
+            String path = args[1].equalsIgnoreCase("global") ? args[2] : args[1];
+            sender.sendMessage(rouletteManager.colorize("&eCurrent " + path + " = &f" + rouletteManager.getCurrentConfigValue(path)));
+            sender.sendMessage(rouletteManager.colorize("&6Usage: &f/rouletteadmin set [global] <path> <value>"));
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(rouletteManager.colorize(rouletteManager.text(
                     "messages.shared.only-players",

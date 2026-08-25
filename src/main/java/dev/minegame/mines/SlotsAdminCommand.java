@@ -19,6 +19,12 @@ public final class SlotsAdminCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         boolean consoleReload = args.length > 0 && args[0].equalsIgnoreCase("reload") && !(sender instanceof Player);
+        if (!(sender instanceof Player) && args.length >= 2 && args[0].equalsIgnoreCase("set") && (args.length == 2 || args.length == 3 && args[1].equalsIgnoreCase("global"))) {
+            String path = args[1].equalsIgnoreCase("global") ? args[2] : args[1];
+            sender.sendMessage(slotsManager.colorize("&eCurrent " + path + " = &f" + slotsManager.getCurrentConfigValue(path)));
+            sender.sendMessage(slotsManager.colorize("&6Usage: &f/slotsadmin set [global] <path> <value>"));
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             if (consoleReload) {
                 slotsManager.reloadConfig(sender);

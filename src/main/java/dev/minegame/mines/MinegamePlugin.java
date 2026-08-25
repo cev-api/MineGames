@@ -16,16 +16,19 @@ public final class MinegamePlugin extends JavaPlugin {
     private RouletteStationStorage rouletteStationStorage;
     private SlotStationStorage slotStationStorage;
     private FightStationStorage fightStationStorage;
+    private ChickenStationStorage chickenStationStorage;
     private JoinGiftStorage joinGiftStorage;
     private BlockSnapshotStorage minesRestoreStorage;
     private BlockSnapshotStorage rouletteRestoreStorage;
     private BlockSnapshotStorage slotsRestoreStorage;
     private BlockSnapshotStorage fightsRestoreStorage;
+    private BlockSnapshotStorage chickenRestoreStorage;
     private HouseBalanceStorage houseBalanceStorage;
     private MinesManager minesManager;
     private RouletteManager rouletteManager;
     private SlotsManager slotsManager;
     private FightsManager fightsManager;
+    private ChickenManager chickenManager;
     private JoinGiftManager joinGiftManager;
     private HologramManager hologramManager;
     private FrameAnimator frameAnimator;
@@ -43,6 +46,13 @@ public final class MinegamePlugin extends JavaPlugin {
         getConfig().options().copyDefaults(true);
         if (migrateFightFramePattern && getConfig().getInt("fights.casino-frame-animation.pattern", 3) == 1) { getConfig().set("fights.casino-frame-animation.pattern", 3); }
         getConfig().set("fights.defaults-version", 2);
+        if (getConfig().getInt("chicken.defaults-version", 0) < 2) { getConfig().set("chicken.blocks.gold", "GOLD_BLOCK"); }
+        if (getConfig().getInt("chicken.defaults-version", 0) < 3) { getConfig().set("chicken.hologram-line-spacing", 0.65); }
+        if (getConfig().getInt("chicken.defaults-version", 0) < 4) { getConfig().set("chicken.min-steps", 8); getConfig().set("chicken.max-steps", 40); getConfig().set("chicken.multiplier-increase-per-second", 0.03); getConfig().set("chicken.pickup-multiplier", 0.10); }
+        if (getConfig().getInt("chicken.defaults-version", 0) < 5) { getConfig().set("chicken.min-lightning-seconds", 5); getConfig().set("chicken.max-lightning-seconds", 45); }
+        if (getConfig().getInt("chicken.defaults-version", 0) < 6) { getConfig().set("chicken.pickup-multiplier", 0.25); }
+        if (getConfig().getInt("chicken.defaults-version", 0) < 7) { getConfig().set("chicken.lightning-randomness-curve", 1.8); }
+        getConfig().set("chicken.defaults-version", 7);
         saveConfig();
 
         if (!setupEconomy()) {
@@ -59,6 +69,8 @@ public final class MinegamePlugin extends JavaPlugin {
         slotStationStorage.load();
         this.fightStationStorage = new FightStationStorage(this);
         fightStationStorage.load();
+        this.chickenStationStorage = new ChickenStationStorage(this);
+        chickenStationStorage.load();
         this.joinGiftStorage = new JoinGiftStorage(this);
         joinGiftStorage.load();
         this.minesRestoreStorage = new BlockSnapshotStorage(this, "mines_restore.yml");
@@ -69,6 +81,8 @@ public final class MinegamePlugin extends JavaPlugin {
         slotsRestoreStorage.load();
         this.fightsRestoreStorage = new BlockSnapshotStorage(this, "fights_restore.yml");
         fightsRestoreStorage.load();
+        this.chickenRestoreStorage = new BlockSnapshotStorage(this, "chicken_restore.yml");
+        chickenRestoreStorage.load();
         this.houseBalanceStorage = new HouseBalanceStorage(this);
         houseBalanceStorage.load();
 
@@ -81,6 +95,7 @@ public final class MinegamePlugin extends JavaPlugin {
         this.rouletteManager = new RouletteManager(this, economy, rouletteStationStorage, hologramPlacementStorage, rouletteRestoreStorage, houseBalanceStorage);
         this.slotsManager = new SlotsManager(this, economy, slotStationStorage, hologramPlacementStorage, slotsRestoreStorage, houseBalanceStorage);
         this.fightsManager = new FightsManager(this, economy, fightStationStorage, hologramPlacementStorage, fightsRestoreStorage, houseBalanceStorage);
+        this.chickenManager = new ChickenManager(this, economy, chickenStationStorage, chickenRestoreStorage);
         this.joinGiftManager = new JoinGiftManager(this, economy, joinGiftStorage);
         this.hologramManager = new HologramManager(this, minesManager, hologramPlacementStorage);
         this.hologramPlacementController = new HologramPlacementController(this, hologramPlacementStorage, minesManager, slotsManager, rouletteManager);
@@ -94,6 +109,7 @@ public final class MinegamePlugin extends JavaPlugin {
         rouletteManager.start();
         slotsManager.start();
         fightsManager.start();
+        chickenManager.start();
         CasinoFrameCommand casinoFrameCommand = new CasinoFrameCommand(minesManager, frameAnimator);
         RouletteCasinoFrameCommand rouletteCasinoFrameCommand = new RouletteCasinoFrameCommand(rouletteManager);
         SlotsCasinoFrameCommand slotsCasinoFrameCommand = new SlotsCasinoFrameCommand(slotsManager);
@@ -114,6 +130,10 @@ public final class MinegamePlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("fighter")).setTabCompleter(new FightsTabCompleter(fightsManager));
         Objects.requireNonNull(getCommand("fightadmin")).setExecutor(new FightsAdminCommand(fightsManager));
         Objects.requireNonNull(getCommand("fightadmin")).setTabCompleter(new FightsTabCompleter(fightsManager));
+        Objects.requireNonNull(getCommand("chicken")).setExecutor(new ChickenCommand(chickenManager));
+        Objects.requireNonNull(getCommand("chicken")).setTabCompleter(tabCompleter);
+        Objects.requireNonNull(getCommand("chickenadmin")).setExecutor(new ChickenAdminCommand(chickenManager));
+        Objects.requireNonNull(getCommand("chickenadmin")).setTabCompleter(tabCompleter);
         Objects.requireNonNull(getCommand("minegamesjoin")).setExecutor(new MinegamesJoinCommand(joinGiftManager));
         Objects.requireNonNull(getCommand("minegamesjoin")).setTabCompleter(tabCompleter);
         CasinoGuiCommand casinoGuiCommand = new CasinoGuiCommand(this, minesManager, rouletteManager, slotsManager, fightsManager);
@@ -126,6 +146,7 @@ public final class MinegamePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RouletteListener(rouletteManager), this);
         getServer().getPluginManager().registerEvents(new SlotsListener(slotsManager), this);
         getServer().getPluginManager().registerEvents(fightsManager, this);
+        getServer().getPluginManager().registerEvents(chickenManager, this);
         getServer().getPluginManager().registerEvents(new CasinoBuildProtectionListener(this, minesManager, rouletteManager, slotsManager, fightsManager), this);
         getServer().getPluginManager().registerEvents(new MinegamesJoinListener(joinGiftManager), this);
     }
@@ -151,6 +172,7 @@ public final class MinegamePlugin extends JavaPlugin {
             rouletteManager.shutdown();
         }
         if (fightsManager != null) { fightsManager.shutdown(); }
+        if (chickenManager != null) { chickenManager.shutdown(); }
         if (slotsManager != null) {
             slotsManager.shutdown();
         }
@@ -164,6 +186,7 @@ public final class MinegamePlugin extends JavaPlugin {
             rouletteStationStorage.save();
         }
         if (fightStationStorage != null) { fightStationStorage.save(); }
+        if (chickenStationStorage != null) { chickenStationStorage.save(); }
         if (slotStationStorage != null) {
             slotStationStorage.save();
         }
@@ -178,6 +201,9 @@ public final class MinegamePlugin extends JavaPlugin {
         }
         if (fightsRestoreStorage != null) {
             fightsRestoreStorage.save();
+        }
+        if (chickenRestoreStorage != null) {
+            chickenRestoreStorage.save();
         }
         if (stationNumberStorage != null) {
             stationNumberStorage.save();

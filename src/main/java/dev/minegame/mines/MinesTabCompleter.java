@@ -303,7 +303,17 @@ public final class MinesTabCompleter implements TabCompleter {
             }
             return List.of();
         }
-        if (name.equals("minegamesjoin")) {
+        if (name.equals("chicken")) {
+            if (args.length == 1) return filterPrefix(args[0], Arrays.asList("red", "blue", "gold", "green", "cashout"));
+            if (args.length == 2 && !args[0].equalsIgnoreCase("cashout")) return filterPrefix(args[1], Arrays.asList("1", "10", "100", "1000"));
+            return List.of();
+        }
+        if (name.equals("chickenadmin")) {
+            if (args.length == 1) return filterPrefix(args[0], Arrays.asList("create", "remove", "regen", "list", "set", "reload"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("create")) return filterPrefix(args[1], Arrays.asList("5", "7", "9", "11", "13", "15"));
+            if (args.length == 2 && args[0].equalsIgnoreCase("set")) return filterPrefix(args[1], Arrays.asList("betting-seconds", "result-seconds", "min-lightning-seconds", "max-lightning-seconds", "lightning-randomness-curve", "min-steps", "max-steps", "multiplier-increase-per-second", "pickup-multiplier", "dead-tile-count", "red-bonus", "blue-bonus", "gold-bonus", "green-bonus", "min-bet", "max-bet", "max-payout", "activation-distance", "hologram.enabled", "hologram-height", "hologram-line-spacing", "hologram-view-range", "blocks.frame", "blocks.red", "blocks.blue", "blocks.gold", "blocks.green", "blocks.dead"));
+            return List.of();
+        }        if (name.equals("minegamesjoin")) {
             if (args.length == 1) {
                 return filterPrefix(args[0], Arrays.asList("true", "false", "set"));
             }

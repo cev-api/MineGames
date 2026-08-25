@@ -24,6 +24,12 @@ public final class MineAdminCommand implements CommandExecutor {
             minesManager.reloadConfig(sender);
             return true;
         }
+        if (!(sender instanceof Player) && args.length >= 2 && args[0].equalsIgnoreCase("set") && (args.length == 2 || args.length == 3 && args[1].equalsIgnoreCase("global"))) {
+            String path = args[1].equalsIgnoreCase("global") ? args[2] : args[1];
+            sender.sendMessage(minesManager.colorize("&eCurrent " + path + " = &f" + minesManager.getCurrentConfigValue(path)));
+            sender.sendMessage(minesManager.colorize("&6Usage: &f/minegameadmin set [global] <path> <value>"));
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(minesManager.colorize(minesManager.text(
                     "messages.shared.only-players",

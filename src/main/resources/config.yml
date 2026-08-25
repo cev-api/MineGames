@@ -57,7 +57,7 @@ roulette:
   red-percent: 48.61
   black-percent: 48.61
   green-percent: 2.78
-  betting-seconds: 15
+  betting-seconds: 10
   spin-seconds: 10
   result-seconds: 5
   min-bet: 1.0
@@ -123,6 +123,37 @@ fights:
     frame-block: DEEPSLATE_BRICKS
     fence-block: SPRUCE_FENCE
     casino-frame-block: REDSTONE_LAMP
+chicken:
+  betting-seconds: 10
+  result-seconds: 6
+  min-lightning-seconds: 5
+  max-lightning-seconds: 45
+  lightning-randomness-curve: 1.8 # 1.0 is uniform; higher favours earlier strikes
+  min-steps: 8
+  max-steps: 40
+  multiplier-increase-per-second: 0.03
+  pickup-multiplier: 0.25
+  dead-tile-count: 10
+  red-bonus: 2.0
+  blue-bonus: 2.0
+  gold-bonus: 2.0
+  green-bonus: 8.0
+  min-bet: 1.0
+  max-bet: -1
+  max-payout: -1
+  activation-distance: 24.0
+  hologram:
+    enabled: true
+  hologram-height: 4.5
+  hologram-line-spacing: 0.65
+  hologram-view-range: 32.0
+  blocks:
+    frame: REDSTONE_LAMP
+    red: RED_CONCRETE
+    blue: BLUE_CONCRETE
+    gold: GOLD_BLOCK
+    green: LIME_CONCRETE
+    dead: BLACK_CONCRETE
 slots:
   announcements:
     broadcast-win: false

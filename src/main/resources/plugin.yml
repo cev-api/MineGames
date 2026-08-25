@@ -1,4 +1,4 @@
-name: MineGames
+﻿name: MineGames
 version: 1.0.5
 author: cev-api
 main: dev.minegame.mines.MinegamePlugin
@@ -32,6 +32,12 @@ commands:
   fightadmin:
     description: Manage Fights arenas.
     usage: /fightadmin <create [size] [fighters]|fighters <#> <2-16>|move <#> [x y z]|remove <#>|regen [#]|list|holo>
+  chicken:
+    description: Bet on a Chicken cash-out board.
+    usage: /chicken <red|blue|gold|green> <amount> | /chicken cashout
+  chickenadmin:
+    description: Manage Chicken boards.
+    usage: /chickenadmin <create [size]|remove <#>|regen [#]|list|set|reload>
   casinogui:
     description: Open the operator casino settings menu.
     usage: /casinogui
