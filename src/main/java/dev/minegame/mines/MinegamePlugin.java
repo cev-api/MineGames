@@ -29,6 +29,7 @@ public final class MinegamePlugin extends JavaPlugin {
     private SlotsManager slotsManager;
     private FightsManager fightsManager;
     private ChickenManager chickenManager;
+    private DiceManager diceManager;
     private JoinGiftManager joinGiftManager;
     private HologramManager hologramManager;
     private FrameAnimator frameAnimator;
@@ -96,6 +97,7 @@ public final class MinegamePlugin extends JavaPlugin {
         this.slotsManager = new SlotsManager(this, economy, slotStationStorage, hologramPlacementStorage, slotsRestoreStorage, houseBalanceStorage);
         this.fightsManager = new FightsManager(this, economy, fightStationStorage, hologramPlacementStorage, fightsRestoreStorage, houseBalanceStorage);
         this.chickenManager = new ChickenManager(this, economy, chickenStationStorage, chickenRestoreStorage);
+        this.diceManager = new DiceManager(this);
         this.joinGiftManager = new JoinGiftManager(this, economy, joinGiftStorage);
         this.hologramManager = new HologramManager(this, minesManager, hologramPlacementStorage);
         this.hologramPlacementController = new HologramPlacementController(this, hologramPlacementStorage, minesManager, slotsManager, rouletteManager);
@@ -110,6 +112,7 @@ public final class MinegamePlugin extends JavaPlugin {
         slotsManager.start();
         fightsManager.start();
         chickenManager.start();
+        diceManager.start();
         CasinoFrameCommand casinoFrameCommand = new CasinoFrameCommand(minesManager, frameAnimator);
         RouletteCasinoFrameCommand rouletteCasinoFrameCommand = new RouletteCasinoFrameCommand(rouletteManager);
         SlotsCasinoFrameCommand slotsCasinoFrameCommand = new SlotsCasinoFrameCommand(slotsManager);
@@ -138,6 +141,7 @@ public final class MinegamePlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("minegamesjoin")).setTabCompleter(tabCompleter);
         CasinoGuiCommand casinoGuiCommand = new CasinoGuiCommand(this, minesManager, rouletteManager, slotsManager, fightsManager);
         Objects.requireNonNull(getCommand("casinogui")).setExecutor(casinoGuiCommand);
+        Objects.requireNonNull(getCommand("dice")).setExecutor(new DiceCommand(diceManager));
         getServer().getPluginManager().registerEvents(new CasinoGuiListener(casinoGuiCommand), this);
 
         getServer().getPluginManager().registerEvents(hologramPlacementController.listener(), this);
@@ -149,6 +153,8 @@ public final class MinegamePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(chickenManager, this);
         getServer().getPluginManager().registerEvents(new CasinoBuildProtectionListener(this, minesManager, rouletteManager, slotsManager, fightsManager), this);
         getServer().getPluginManager().registerEvents(new MinegamesJoinListener(joinGiftManager), this);
+        getServer().getPluginManager().registerEvents(diceManager, this);
+        getServer().getPluginManager().registerEvents(new DiceListener(diceManager), this);
     }
 
     @Override
@@ -173,6 +179,7 @@ public final class MinegamePlugin extends JavaPlugin {
         }
         if (fightsManager != null) { fightsManager.shutdown(); }
         if (chickenManager != null) { chickenManager.shutdown(); }
+        if (diceManager != null) { diceManager.shutdown(); }
         if (slotsManager != null) {
             slotsManager.shutdown();
         }

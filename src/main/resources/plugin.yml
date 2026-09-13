@@ -44,6 +44,9 @@ commands:
   minegamesjoin:
     description: Configure the new-player join gift.
     usage: /minegamesjoin <true|false|set <amount>>
+  dice:
+    description: Receive two physical dice for testing.
+    usage: /dice
 permissions:
   mine.admin:
     default: op
