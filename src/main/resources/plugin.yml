@@ -1,8 +1,9 @@
 ﻿name: MineGames
-version: 1.0.5
+version: 1.0.6
 author: cev-api
 main: dev.minegame.mines.MinegamePlugin
 api-version: "1.21"
+folia-supported: true
 depend:
   - Vault
 softdepend:
@@ -47,6 +48,12 @@ commands:
   dice:
     description: Receive two physical dice for testing.
     usage: /dice
+  craps:
+    description: Play portable craps with physical dice.
+    usage: /craps <bet>
+  diceadmin:
+    description: Configure physical dice and craps.
+    usage: /diceadmin <settings>
 permissions:
   mine.admin:
     default: op
@@ -55,4 +62,6 @@ permissions:
   slots.admin:
     default: op
   minegamesjoin.admin:
+    default: op
+  dice.admin:
     default: op

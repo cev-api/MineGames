@@ -106,7 +106,7 @@ public final class RouletteManager {
         if (ticker != null) {
             ticker.cancel();
         }
-        ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
+        ticker = PlatformScheduler.runTaskTimer(plugin, this::tick, 20L, 20L);
     }
 
     public void shutdown() {
@@ -1025,7 +1025,7 @@ public final class RouletteManager {
         int max = stationBoardSize;
         for (int r = 0; r <= max; r++) {
             int radius = r;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            PlatformScheduler.runTaskLater(plugin, runtime.station.centerLocation(), () -> {
                 for (int row = 0; row < stationBoardSize; row++) {
                     for (int col = 0; col < stationBoardSize; col++) {
                         int dx = Math.abs(col - stationBoardSize / 2);
@@ -1052,14 +1052,14 @@ public final class RouletteManager {
             return;
         }
         if (!hasNearbyPlayers(runtime)) {
-            runtime.spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> scheduleSpinStep(runtime, step, total), 10L);
+            runtime.spinTask = PlatformScheduler.runTaskLater(plugin, runtime.station.centerLocation(), () -> scheduleSpinStep(runtime, step, total), 10L);
             return;
         }
         int stationBoardSize = boardSizeFor(runtime.station);
         setSelector(runtime, RNG.nextInt(stationBoardSize * stationBoardSize));
         double progress = (double) step / Math.max(1, total - 1);
         int delay = 2 + (int) Math.floor(progress * 8.0);
-        runtime.spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> scheduleSpinStep(runtime, step + 1, total), delay);
+        runtime.spinTask = PlatformScheduler.runTaskLater(plugin, runtime.station.centerLocation(), () -> scheduleSpinStep(runtime, step + 1, total), delay);
     }
 
     private void setSelector(StationRuntime runtime, int index) {
@@ -1533,7 +1533,7 @@ public final class RouletteManager {
         Location center = runtime.geometry(boardSizeFor(runtime.station)).centerAbove(1.2);
         for (int i = 0; i < fireworksPerWinner; i++) {
             int delay = i * 6;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            PlatformScheduler.runTaskLater(plugin, center, () -> {
                 Firework firework = (Firework) center.getWorld().spawnEntity(center, EntityType.FIREWORK_ROCKET);
                 FireworkMeta meta = firework.getFireworkMeta();
                 meta.addEffect(FireworkEffect.builder()
@@ -1635,9 +1635,20 @@ public final class RouletteManager {
                     yield v;
                 }
                 case "roulette.broadcast-top-winner", "roulette.announcements.broadcast-win", "roulette.announcements.broadcast-loss", "roulette.hologram.enabled" -> parseBoolean(raw);
-                case "roulette.blocks.frame", "roulette.blocks.red", "roulette.blocks.black", "roulette.blocks.green", "roulette.blocks.selector" -> {
+                case "roulette.blocks.frame", "roulette.blocks.red", "roulette.blocks.black", "roulette.blocks.green", "roulette.blocks.selector",
+                        "roulette.frame-animation.block" -> {
                     Material m = Material.matchMaterial(raw);
                     yield m != null && m.isBlock() ? m.name() : null;
+                }
+                case "roulette.frame-animation.enabled" -> parseBoolean(raw);
+                case "roulette.frame-animation.pattern" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value >= 1 && value <= 10 ? value : null;
+                }
+                case "roulette.frame-animation.mode" -> normalizeRouletteFrameMode(raw);
+                case "roulette.frame-animation.interval-ticks" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value > 0 ? value : null;
                 }
                 default -> null;
             };

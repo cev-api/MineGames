@@ -52,7 +52,7 @@ public final class HologramManager {
         if (task != null) {
             task.cancel();
         }
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 20L);
+        task = PlatformScheduler.runTaskTimer(plugin, this::tick, 1L, 20L);
     }
 
     public void shutdown() {

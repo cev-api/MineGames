@@ -5,7 +5,6 @@ import java.util.Map;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.ChatColor;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public final class JoinGiftManager {
@@ -36,7 +35,7 @@ public final class JoinGiftManager {
         if (!firstTime || !enabled || amount <= 0.0) {
             return;
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        PlatformScheduler.runTaskLater(plugin, player, () -> {
             if (!player.isOnline()) {
                 return;
             }

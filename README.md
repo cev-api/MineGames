@@ -2,7 +2,7 @@
 
 ![0](https://i.imgur.com/NO1MpCA.png)
 
-MineGames is a Paper `1.21+` casino plugin with five game types:
+MineGames is a modern Minecraft `1.21 -> 26.2` casino plugin with five casino game types plus physical dice and portable craps:
 
 1. **MineGame**: reveal safe blocks, avoid mines, cash out at your chosen point.
 
@@ -17,19 +17,37 @@ MineGames is a Paper `1.21+` casino plugin with five game types:
 3. **Slots**: lever-driven reels with configurable widths, rows, frames, and payouts.
 
 ![5](https://i.imgur.com/cj5fCTH.png)
+![Slott](https://i.imgur.com/b0Lhgha.png)
 
 4. **Fights**: wager on randomly equipped mobs battling inside a protected arena.
 
+![Fights](https://i.imgur.com/31TJ2ly.png)
+
 5. **Chicken**: choose a coloured tile, cash out before lightning, and collect multiplier stars while a chicken roams the board.
 
-![6](https://i.imgur.com/31TJ2ly.png)
+![6](https://i.imgur.com/IJB96Rp.png)
 
-All games use Vault economy, support per-station cosmetics, holograms, and casino frame animations.
+6. **Physical Dice and Craps**: throw custom-textured, server-simulated dice in the world, then play a portable craps round anywhere with `/craps`.
+
+![Dice](https://i.imgur.com/oZ51gAS.png)
+
+Casino games use Vault economy and support per-station cosmetics, holograms, and casino frame animations. Physical dice use vanilla display entities and do not require a client mod or resource pack.
+
+## Platform compatibility
+
+The same plugin jar targets Bukkit/CraftBukkit, Spigot, Paper, Purpur, and Folia. Folia-aware scheduling is selected at runtime, while the build profiles can be used to verify each API family:
+
+```text
+mvn package                 # Paper (default)
+mvn -Pspigot package       # Bukkit/CraftBukkit and Spigot API
+mvn -Ppurpur package
+mvn -Pfolia package
+```
 
 ## Requirements
 
 - Java 21
-- Paper 1.21+
+- Minecraft 1.21+ on Bukkit/CraftBukkit, Spigot, Paper, Purpur, or Folia
 - Vault (for example [VaultUnlocked](https://modrinth.com/plugin/vaultunlocked))
 - A Vault-compatible economy plugin (for example [EconomyProvider by ilius](https://modrinth.com/plugin/economyprovider-by-ilius))
 
@@ -61,7 +79,7 @@ Operators can open the inventory-based settings menu with:
 /casinogui
 ```
 
-The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit global settings, browse its stations, and edit supported per-station overrides. Global changes override existing station settings. Previous/Next navigate settings pages, and Back/Stations provide navigation.
+The GUI includes MineGame, Roulette, Slots, Fights, Chicken, and Dice. Select a game to edit global settings, browse its stations, and edit supported per-station overrides. Global changes override existing station settings. Previous/Next navigate settings pages, and Back/Stations provide navigation. Chicken settings are global; Dice includes physical-dice and craps settings.
 
 ## Gameplay
 
@@ -108,6 +126,22 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
 4. The multiplier rises continuously above the chicken. Nether Star pickups add the configured pickup bonus with sparkle and sound effects.
 5. Cash out with /chicken cashout or hit the lamp frame. Uncashed wagers win only on their selected colour; black/dead tiles pay nothing.
 6. Lightning timing is pre-rolled between the configured minimum and maximum. The randomness curve favours early/mid strikes by default.
+
+### Physical Dice
+
+1. Run `/dice` to receive the configured number of individual dice (two by default).
+2. `/dice` fills only a missing amount. Existing inventory dice are reused, and the command will not issue more while you have active dice on the ground; collect them or wait 30 seconds for them to despawn.
+3. Right-click while holding a die to throw it. Dice travel, fall, bounce, tumble, and settle on a server-selected face.
+4. Right-click a finished die to pick it up. Dice use vanilla `PLAYER_HEAD` items and `ItemDisplay` entities; no client mod, resource pack, or chat roll is required.
+5. Dice are marked with PersistentDataContainer data, so their identity is not based on the display name alone. Each die can be thrown and settled independently, including by multiple players at once. Uncollected dice despawn after 30 seconds.
+
+### Craps
+
+1. Start a portable craps round anywhere with `/craps <bet>`; the bet is withdrawn through Vault and two session-specific physical dice are prepared. Existing dice in the player inventory are reused, with only missing dice created.
+2. Throw both dice and wait for them to settle. On the come-out roll, 7 or 11 wins, 2/3/12 loses, and any other total establishes the Point.
+3. After a Point is established, throw the same two dice again. Matching the Point wins; rolling 7 loses; other totals continue the round.
+4. Dice are returned between rolls and after the round ends. Use `/craps cancel` to cancel an active round and refund its wager. Timed-out or invalid sessions are cleaned up safely.
+
 ## Winner Math & RNG
 
 1. **MineGame**
@@ -143,7 +177,13 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
    - Lightning is sampled between the configured minimum and maximum in 0.1-second increments. A randomness curve of 1.0 is uniform; higher values favour earlier strikes.
    - The chicken follows server-controlled roaming paths. Its path is visual only and cannot alter the pre-rolled lightning timing.
    - The live multiplier grows continuously and every Nether Star adds the configured pickup bonus. A cash-out pays the live multiplier; an uncleared bet must also match the final colour and then receives that colour bonus.
-6. **RNG notes**
+
+6. **Physical Dice and Craps**
+   - Each die selects an independent result from 1 to 6 when it is thrown. The animation is server-side and the die rotates toward the known final orientation for that result while settling.
+   - Dice use `ThreadLocalRandom` for gameplay results and quaternion-based display transformations for three-dimensional tumbling.
+   - Craps uses standard come-out/Point rules: 7 or 11 wins on the come-out roll, 2/3/12 loses, a Point must be repeated before 7, and other totals continue the round.
+
+7. **RNG notes**
    - MineGame uses `Math.random()` for mine placement.
    - Roulette and Slots use a shared `java.util.Random` instance.
    - Fighter types, equipment materials, leather colors, enchantment choices, and enchantment levels use Java `ThreadLocalRandom` (with compatible enchantments shuffled before selection).
@@ -165,6 +205,37 @@ The GUI includes MineGame, Roulette, Slots, and Fights. Select a game to edit gl
 - Chicken:
 1. /chicken <red|blue|gold|green> <amount>
 2. /chicken cashout
+- Physical dice:
+1. `/dice`
+2. Right-click a die to throw it; right-click a finished die to retrieve it.
+- Craps:
+1. `/craps <bet>`
+2. `/craps cancel`
+
+### Dice Admin (`dice.admin`)
+
+Primary command: `/diceadmin`
+
+- View/reload:
+1. `/diceadmin settings`
+2. `/diceadmin reload`
+- General dice settings:
+1. `/diceadmin color <red|black|white|blue|green|yellow|orange|cyan|magenta|lime|light_blue> [craps|all]`
+2. `/diceadmin player-alert <on|off> [craps|all]`
+3. `/diceadmin server-alert <on|off> [craps|all]`
+4. `/diceadmin amount <1-64>`
+5. `/diceadmin players <on|off>`
+6. `/diceadmin glow <on|off> [craps|all]`
+7. `/diceadmin particles <on|off> [craps|all]`
+8. `/diceadmin rate-limit <amount|off> [24h|day]`
+- Craps:
+1. `/diceadmin craps <on|off>`
+2. `/diceadmin housebalance`
+3. `/diceadmin housewithdraw <amount|all>`
+
+The optional `craps` scope changes only craps. The `all`/default scope changes normal dice; craps settings use `inherit` by default, so they follow the normal dice setting until overridden.
+
+`rate-limit` applies separately to each player. It limits successful `/dice` grants and `/craps` round starts; `off` disables it, `24h` uses a literal rolling 24-hour window, and `day` resets at the next Minecraft game day.
 
 ### MineGame Admin (`mine.admin`)
 
@@ -297,6 +368,7 @@ Primary command: `/fightadmin`
 - `slots.admin` (default: op)
 - `fights.admin` (default: op)
 - `chicken.admin` (default: op)
+- `dice.admin` (default: op)
 
 ## Config Layout
 
@@ -323,6 +395,18 @@ Primary command: `/fightadmin`
 3. `fights.casino-frame-animation.*`
 - Chicken:
 1. `chicken.*`
+- Physical dice and Craps:
+1. `dice.command-enabled`
+2. `dice.default-amount`
+3. `dice.color`
+4. `dice.player-alert`
+5. `dice.server-alert`
+6. `dice.glow`
+7. `dice.particles`
+8. `dice.craps.enabled`
+9. `dice.craps.min-bet` and `dice.craps.max-bet`
+10. `dice.craps.color`, `dice.craps.player-alert`, `dice.craps.server-alert`, `dice.craps.glow`, and `dice.craps.particles` (`inherit` or an explicit override)
+11. `dice.rate-limit.amount` and `dice.rate-limit.period` (`24h` or `day`)
 
 ## Distance / Activation / Hologram Settings
 
@@ -375,7 +459,7 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - `setframe/setred/...` and `casinoframe` commands edit station overrides.
 - Adding `all` applies cosmetic override commands to every station of that game type.
 - Mines, roulette, and slots rebaseline their saved footprints when a size change would otherwise leave old blocks behind.
-- `housebalance`/`housewithdraw` are admin-only (`mine.admin` / `roulette.admin`).
+- `housebalance`/`housewithdraw` are admin-only (`mine.admin` / `roulette.admin` / `dice.admin`).
 - `housewithdraw` pays the withdrawn amount directly to the admin executing the command.
 - MineGame board height is controlled by `board.frame-one-higher` (settable via `/minegameadmin set board.frame-one-higher <true|false>`).
 - Roulette color defaults are percent-based (`48.61 / 48.61 / 2.78`) and auto-scale with board size.
@@ -404,7 +488,8 @@ Placements are persistent and stored in `plugins/MineGames/holograms.yml`. Holog
 - `plugins/MineGames/slots_restore.yml` (Slots original-block snapshots for restore on station removal)
 - `plugins/MineGames/fights_restore.yml` (Fights original-block snapshots for restore on station removal)
 - `plugins/MineGames/chicken_restore.yml` (Chicken original-block snapshots for board removal)
-- `plugins/MineGames/house_balances.yml` (separate MineGame/Roulette house balance + wager/payout totals)
+- `plugins/MineGames/house_balances.yml` (separate MineGame/Roulette/Slots/Fights/Craps house balance + wager/payout totals)
+- `plugins/MineGames/dice_rate_limits.yml` (per-player dice/craps rate-limit windows and counts)
 
 ## License
 

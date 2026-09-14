@@ -24,6 +24,10 @@ public final class HouseBalanceStorage {
     private double slotsTotalWagered;
     private double slotsTotalPayout;
 
+    private double crapsBalance;
+    private double crapsTotalWagered;
+    private double crapsTotalPayout;
+
     public HouseBalanceStorage(MinegamePlugin plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "house_balances.yml");
@@ -49,6 +53,10 @@ public final class HouseBalanceStorage {
         this.slotsBalance = yaml.getDouble("slots.balance", 0.0);
         this.slotsTotalWagered = yaml.getDouble("slots.total-wagered", 0.0);
         this.slotsTotalPayout = yaml.getDouble("slots.total-payout", 0.0);
+
+        this.crapsBalance = yaml.getDouble("craps.balance", 0.0);
+        this.crapsTotalWagered = yaml.getDouble("craps.total-wagered", 0.0);
+        this.crapsTotalPayout = yaml.getDouble("craps.total-payout", 0.0);
     }
 
     public void save() {
@@ -65,6 +73,9 @@ public final class HouseBalanceStorage {
         yaml.set("slots.balance", slotsBalance);
         yaml.set("slots.total-wagered", slotsTotalWagered);
         yaml.set("slots.total-payout", slotsTotalPayout);
+        yaml.set("craps.balance", crapsBalance);
+        yaml.set("craps.total-wagered", crapsTotalWagered);
+        yaml.set("craps.total-payout", crapsTotalPayout);
         try {
             yaml.save(file);
         } catch (IOException ex) {
@@ -105,6 +116,15 @@ public final class HouseBalanceStorage {
         slotsBalance += cleanWager - cleanPayout;
         slotsTotalWagered += cleanWager;
         slotsTotalPayout += cleanPayout;
+        save();
+    }
+
+    public void recordCrapsResult(double wager, double payout) {
+        double cleanWager = Math.max(0.0, wager);
+        double cleanPayout = Math.max(0.0, payout);
+        crapsBalance += cleanWager - cleanPayout;
+        crapsTotalWagered += cleanWager;
+        crapsTotalPayout += cleanPayout;
         save();
     }
 
@@ -166,6 +186,21 @@ public final class HouseBalanceStorage {
         save();
     }
 
+    public double withdrawCraps(double amount) {
+        double allowed = Math.max(0.0, Math.min(amount, crapsBalance));
+        crapsBalance -= allowed;
+        save();
+        return allowed;
+    }
+
+    public void refundCrapsWithdrawal(double amount) {
+        if (amount <= 0.0) {
+            return;
+        }
+        crapsBalance += amount;
+        save();
+    }
+
     public double minesBalance() {
         return minesBalance;
     }
@@ -204,5 +239,17 @@ public final class HouseBalanceStorage {
 
     public double slotsTotalPayout() {
         return slotsTotalPayout;
+    }
+
+    public double crapsBalance() {
+        return crapsBalance;
+    }
+
+    public double crapsTotalWagered() {
+        return crapsTotalWagered;
+    }
+
+    public double crapsTotalPayout() {
+        return crapsTotalPayout;
     }
 }

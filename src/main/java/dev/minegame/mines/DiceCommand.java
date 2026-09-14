@@ -19,11 +19,26 @@ public final class DiceCommand implements CommandExecutor {
             return true;
         }
         if (args.length != 0) {
-            player.sendMessage("Usage: /dice");
+            player.sendMessage(diceManager.colorize(diceManager.text(
+                    "messages.dice.command.usage",
+                    "&eUsage: /dice"
+            )));
             return true;
         }
-        diceManager.giveDice(player, 2);
-        player.sendMessage("§aYou received two dice.");
+        if (!diceManager.diceCommandEnabled() && !player.hasPermission("dice.admin")) {
+            player.sendMessage(diceManager.colorize(diceManager.text(
+                    "messages.dice.gameplay.command-disabled",
+                    "&cThe /dice command is disabled."
+            )));
+            return true;
+        }
+        int amount = diceManager.defaultDiceAmount();
+        if (diceManager.giveDice(player, amount)) {
+            player.sendMessage(diceManager.colorize(diceManager.text(
+                    "messages.dice.gameplay.received",
+                    "&aYou received &f%amount% &adice."
+            ).replace("%amount%", Integer.toString(amount))));
+        }
         return true;
     }
 }

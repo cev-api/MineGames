@@ -2,7 +2,6 @@ package dev.minegame.mines;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
@@ -40,7 +39,7 @@ public final class SlotsFrameAnimator {
         }
         this.tick = 0;
         int intervalTicks = Math.max(1, plugin.getConfig().getInt("slots.frame-animation.interval-ticks", 6));
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::animateTick, 1L, intervalTicks);
+        task = PlatformScheduler.runTaskTimer(plugin, this::animateTick, 1L, intervalTicks);
     }
 
     private void animateTick() {

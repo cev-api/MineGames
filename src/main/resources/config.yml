@@ -1,6 +1,6 @@
 hologram:
   background-color: '#000000'
-  background-opacity: 128
+  background-opacity: 255
   foreground-color: ''
   foreground-opacity: 255
   see-through-walls: true
@@ -234,6 +234,27 @@ join-gift:
   enabled: true
   amount: 1000.0
 
+dice:
+  command-enabled: true
+  default-amount: 2
+  color: red
+  player-alert: true
+  server-alert: false
+  glow: false
+  particles: false
+  rate-limit:
+    amount: -1
+    period: 24h
+  craps:
+    enabled: true
+    min-bet: 1.0
+    max-bet: -1
+    color: inherit
+    player-alert: inherit
+    server-alert: inherit
+    glow: inherit
+    particles: inherit
+
 messages:
   shared:
     only-players: Only players can use this command.
@@ -255,6 +276,68 @@ messages:
       amount-set: '&aJoin gift amount set to &6$%amount%&a.'
       enabled: '&aJoin gift enabled.'
       disabled: '&eJoin gift disabled.'
+
+  dice:
+    command:
+      usage: '&eUsage: /dice'
+      admin-usage: '&6Usage: &f/diceadmin <color|player-alert|server-alert|amount|players|glow|particles|rate-limit|craps|settings|housebalance|housewithdraw|reload> ...'
+    gameplay:
+      command-disabled: '&cThe /dice command is disabled.'
+      received: '&aYou received &f%amount% &adice.'
+      die-rolled: '&6[Dice] &fDie %die% rolled &e%result%&f.'
+      server-die-rolled: '&6[Dice] &f%player%''s die %die% rolled &e%result%&f.'
+      total: '&6[Dice] &fYou rolled &e%rolls% &f= &e%total%&f.'
+      server-total: '&6[Dice] &f%player% rolled &e%rolls% &f= &e%total%&f.'
+      already-active: '&eYou already have an active dice game. Finish it first.'
+      existing-ground: '&eYou already have dice on the ground. Collect them or wait 30 seconds for them to despawn.'
+      already-have: '&eYou already have enough dice.'
+      rate-limited: '&cYou have reached the dice limit. Try again in %time%.'
+    admin:
+      settings-header: '&6[Dice] &fSettings'
+      setting-usage: '&eUsage: /diceadmin <setting> <value> [craps]'
+      invalid-setting: '&cUnknown or incorrectly scoped dice setting.'
+      invalid-value: '&cUse on or off (or inherit for craps settings).'
+      invalid-color: '&cUnknown dice color.'
+      invalid-amount: '&cAmount must be a whole number from 1 to 64.'
+      invalid-rate-limit: '&cRate limit must be a non-negative number or off.'
+      invalid-rate-period: '&cRate period must be 24h or day.'
+      rate-limit-usage: '&eUsage: /diceadmin rate-limit <amount|off> [24h|day]'
+      setting-set: '&aSet &f%path% &ato &f%value%&a.'
+      reloaded: '&aDice settings reloaded.'
+
+  craps:
+    command:
+      usage: '&eUsage: /craps <bet> | /craps cancel'
+      amount-not-number: '&cBet must be a number.'
+    gameplay:
+      disabled: '&cCraps is disabled.'
+      already-active: '&cYou already have an active craps game.'
+      not-active: '&eYou do not have an active craps game.'
+      invalid-bet: '&cInvalid craps bet.'
+      no-money: '&cYou do not have enough money.'
+      existing-ground: '&eYou already have dice on the ground. Collect them or wait 30 seconds for them to despawn.'
+      started: '&aCraps started with a &6$%wager% &abet. Throw both dice.'
+      die-rolled: '&6[Craps] &fDie %die% rolled &e%result%&f.'
+      server-die-rolled: '&6[Craps] &f%player%''s die %die% rolled &e%result%&f.'
+      total: '&6[Craps] &fYou rolled &e%first% + %second% = %total%&f.'
+      server-roll: '&6[Craps] &f%player% rolled &e%first% + %second% = %total%&f.'
+      point: '&e[Craps] &fPoint is &6%point%&f. Throw both dice again.'
+      continued: '&7[Craps] &f%first% + %second% = %total%&7. Point remains &6%point%&7.'
+      win: '&a[Craps] &f%first% + %second% = %total% &7| &aWon $%payout%'
+      lose: '&c[Craps] &f%first% + %second% = %total% &7| &cLost $%wager%'
+      server-win: '&6[Craps] &f%player% won &a$%payout%&f.'
+      server-lose: '&6[Craps] &f%player% lost &c$%wager%&f.'
+      timeout: '&cCraps timed out; your bet was refunded.'
+      cancelled: '&eCraps cancelled; your bet was refunded.'
+      economy-payout-failed: '&cEconomy error: payout failed. Contact staff.'
+    admin:
+      housewithdraw-usage: '&6Usage: &f/diceadmin housewithdraw <amount|all>'
+      house-balance-header: '&6[Craps] &eHouse Balance: &a$%balance%'
+      house-balance-details: '&7Wagered: &f$%wagered% &7| Paid: &f$%paid%'
+      house-no-balance: '&cNo craps house balance available to withdraw.'
+      house-nothing-to-withdraw: '&cNothing to withdraw.'
+      house-withdraw-success: '&aWithdrew &6$%amount% &afrom craps house balance.'
+      house-remaining-balance: '&7Remaining craps house balance: &a$%balance%'
   
   minegame:
     command:

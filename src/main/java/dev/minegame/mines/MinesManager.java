@@ -375,7 +375,7 @@ public final class MinesManager {
         activeByPlayer.put(player.getUniqueId(), game);
         activeByStation.put(station.key(), game);
 
-        BukkitTask ticker = Bukkit.getScheduler().runTaskTimer(plugin, () -> tickGame(game), 20L, 20L);
+        BukkitTask ticker = PlatformScheduler.runTaskTimer(plugin, game.station().beaconLocation(), () -> tickGame(game), 20L, 20L);
         game.setTickerTask(ticker);
 
         renderActiveBoard(game);
@@ -873,7 +873,7 @@ public final class MinesManager {
 
     private void setBlockRevealed(Block block, Material material) {
         block.setType(material, false);
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        PlatformScheduler.runTask(plugin, block.getLocation(), () -> {
             if (block.getType() != material) {
                 block.setType(material, false);
             }
@@ -964,7 +964,7 @@ public final class MinesManager {
         if (existing != null) {
             existing.cancel();
         }
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        BukkitTask task = PlatformScheduler.runTaskLater(plugin, station.beaconLocation(), () -> {
             try {
                 regenerateBoard(station);
             } finally {
@@ -1043,9 +1043,11 @@ public final class MinesManager {
     private void launchWinCelebration(StationData station) {
         BoardGeometry geometry = geometry(station);
         List<Location> launches = geometry.frontCelebrationLocations();
+        Location beacon = station.beaconLocation();
+        Location schedulerLocation = launches.isEmpty() ? beacon : launches.getFirst();
         for (int i = 0; i < fireworkCount; i++) {
             int delay = i * 8;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            PlatformScheduler.runTaskLater(plugin, schedulerLocation, () -> {
                 for (Location launch : launches) {
                     Firework firework = (Firework) launch.getWorld().spawnEntity(launch, EntityType.FIREWORK_ROCKET);
                     FireworkMeta meta = firework.getFireworkMeta();
@@ -1061,12 +1063,11 @@ public final class MinesManager {
                 }
             }, delay);
         }
-        Location beacon = station.beaconLocation();
         if (beacon != null && beacon.getWorld() != null) {
             for (int i = 0; i < winDingCount; i++) {
                 int dingDelay = i * 6;
                 float pitch = 1.0f + (i * 0.08f);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> beacon.getWorld()
+                PlatformScheduler.runTaskLater(plugin, beacon, () -> beacon.getWorld()
                         .playSound(beacon.clone().add(0.5, 1.0, 0.5), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, pitch), dingDelay);
             }
         }
@@ -1149,6 +1150,11 @@ public final class MinesManager {
                  "minegame.board.safe-reveal-block",
                  "minegame.board.mine-reveal-block",
                  "minegame.board.frame-block",
+                 "minegame.frame-animation.enabled",
+                 "minegame.frame-animation.block",
+                 "minegame.frame-animation.pattern",
+                 "minegame.frame-animation.mode",
+                 "minegame.frame-animation.interval-ticks",
                  "minegame.board.reset-delay-seconds",
                  "minegame.game.duration-seconds",
                  "minegame.game.house-edge-percent",
@@ -1182,7 +1188,15 @@ public final class MinesManager {
 
     private boolean isStationConfigPath(String path) {
         return switch (path) {
-            case "minegame.board.grid-size" -> true;
+            case "minegame.board.grid-size",
+                 "minegame.board.hidden-block",
+                 "minegame.board.safe-reveal-block",
+                 "minegame.board.mine-reveal-block",
+                 "minegame.board.frame-block",
+                 "minegame.frame-animation.enabled",
+                 "minegame.frame-animation.block",
+                 "minegame.frame-animation.pattern",
+                 "minegame.frame-animation.mode" -> true;
             default -> false;
         };
     }
@@ -1190,6 +1204,14 @@ public final class MinesManager {
     private StationData applyStationConfigValue(StationData station, String path, Object parsed) {
         return switch (path) {
             case "minegame.board.grid-size" -> station.withBoardSize((Integer) parsed);
+            case "minegame.board.hidden-block" -> station.withBoardMaterials(String.valueOf(parsed), station.boardSafeRevealBlock(), station.boardMineRevealBlock(), station.boardFrameBlock());
+            case "minegame.board.safe-reveal-block" -> station.withBoardMaterials(station.boardHiddenBlock(), String.valueOf(parsed), station.boardMineRevealBlock(), station.boardFrameBlock());
+            case "minegame.board.mine-reveal-block" -> station.withBoardMaterials(station.boardHiddenBlock(), station.boardSafeRevealBlock(), String.valueOf(parsed), station.boardFrameBlock());
+            case "minegame.board.frame-block" -> station.withBoardMaterials(station.boardHiddenBlock(), station.boardSafeRevealBlock(), station.boardMineRevealBlock(), String.valueOf(parsed));
+            case "minegame.frame-animation.enabled" -> station.withFrameAnimation((Boolean) parsed, null, null, null);
+            case "minegame.frame-animation.block" -> station.withFrameAnimation(null, String.valueOf(parsed), null, null);
+            case "minegame.frame-animation.pattern" -> station.withFrameAnimation(null, null, (Integer) parsed, null);
+            case "minegame.frame-animation.mode" -> station.withFrameAnimation(null, null, null, String.valueOf(parsed));
             default -> null;
         };
     }
@@ -1219,6 +1241,14 @@ public final class MinesManager {
                 case "minegame.effects.firework-count", "minegame.effects.win-ding-count" -> {
                     int value = Integer.parseInt(raw);
                     yield value >= 1 ? value : null;
+                }
+                case "minegame.frame-animation.pattern" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value >= 1 && value <= 10 ? value : null;
+                }
+                case "minegame.frame-animation.interval-ticks" -> {
+                    int value = Integer.parseInt(raw);
+                    yield value > 0 ? value : null;
                 }
                 case "minegame.game.house-edge-percent" -> {
                     double value = Double.parseDouble(raw);
@@ -1264,7 +1294,12 @@ public final class MinesManager {
                         "minegame.announcements.broadcast-loss",
                  "minegame.announcements.send-welcome-on-start" -> parseBoolean(raw);
                 case "minegame.game.title-prefix" -> raw;
-                case "minegame.board.hidden-block", "minegame.board.safe-reveal-block", "minegame.board.mine-reveal-block", "minegame.board.frame-block", "minegame.board.station-block" -> {
+                case "minegame.frame-animation.enabled" -> parseBoolean(raw);
+                case "minegame.frame-animation.mode" -> {
+                    String mode = raw.toLowerCase();
+                    yield mode.equals("idle_only") || mode.equals("always") ? mode : null;
+                }
+                case "minegame.board.hidden-block", "minegame.board.safe-reveal-block", "minegame.board.mine-reveal-block", "minegame.board.frame-block", "minegame.board.station-block", "minegame.frame-animation.block" -> {
                     Material material = Material.matchMaterial(raw);
                     yield (material != null && material.isBlock()) ? material.name() : null;
                 }

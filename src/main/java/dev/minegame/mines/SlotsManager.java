@@ -108,7 +108,7 @@ public final class SlotsManager {
         if (ticker != null) {
             ticker.cancel();
         }
-        ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
+        ticker = PlatformScheduler.runTaskTimer(plugin, this::tick, 20L, 20L);
     }
 
     public void shutdown() {
@@ -188,6 +188,7 @@ public final class SlotsManager {
         if (runtime.spinTask != null) {
             runtime.spinTask.cancel();
         }
+        clearShelfContents(runtime.station);
         if (restoreStorage.has(runtime.station.key())) {
             restoreStorage.restoreAndForget(runtime.station.key());
         } else {
@@ -298,6 +299,7 @@ public final class SlotsManager {
         if (runtime.spinTask != null) {
             runtime.spinTask.cancel();
         }
+        clearShelfContents(runtime.station);
         if (restoreStorage.has(runtime.station.key())) {
             restoreStorage.restoreAndForget(runtime.station.key());
         } else {
@@ -811,7 +813,7 @@ public final class SlotsManager {
         }
         int warmupTicks = spinSeconds * 20;
         runtime.elapsedSpinTicks = 0;
-        runtime.spinTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        runtime.spinTask = PlatformScheduler.runTaskTimer(plugin, runtime.station.originLocation(), () -> {
             runtime.elapsedSpinTicks += 2;
             if (runtime.elapsedSpinTicks > warmupTicks) {
                 runtime.lockedReels = Math.min(runtime.station.reelCount(),
@@ -931,11 +933,36 @@ public final class SlotsManager {
     }
 
     private void renderShelfSymbols(Block block, List<Material> symbols, int offset, BlockFace facing) {
-        block.setType(shelfBlock(), false);
+        Material target = shelfBlock();
+        if (block.getType() != target) {
+            clearShelfInventory(block);
+            block.setType(target, false);
+        }
         if (block.getBlockData() instanceof org.bukkit.block.data.Directional directional) { directional.setFacing(facing); block.setBlockData(directional, false); }
         if (!(block.getState() instanceof org.bukkit.block.Shelf shelf)) return;
         for (int slot = 0; slot < 3; slot++) shelf.getSnapshotInventory().setItem(slot, new ItemStack(symbols.get(offset + slot)));
         shelf.update(true, false);
+    }
+
+    private void clearShelfInventory(Block block) {
+        if (!(block.getState() instanceof org.bukkit.block.Shelf shelf)) {
+            return;
+        }
+        shelf.getSnapshotInventory().clear();
+        shelf.update(true, false);
+    }
+
+    private void clearShelfContents(SlotStationData station) {
+        if (!station.shelfMode()) {
+            return;
+        }
+        try {
+            for (Block block : new SlotsGeometry(station, leverPlacement, shelfCasinoFrame()).reelBlocks()) {
+                clearShelfInventory(block);
+            }
+        } catch (IllegalStateException ignored) {
+            // The station's world may be unavailable while the plugin is shutting down.
+        }
     }
 
     private void updateSpinLights(SlotRuntime runtime) {
@@ -1370,6 +1397,7 @@ public final class SlotsManager {
         // Clear old machine area (using PREVIOUS geometry) since the restore snapshot
         // only covers the area that was captured, not the full old machine.
         if (previous != null) {
+            clearShelfContents(previous);
             SlotsGeometry oldGeometry = new SlotsGeometry(previous, leverPlacement, shelfCasinoFrame());
             SlotsGeometry newGeometry = new SlotsGeometry(station, leverPlacement, shelfCasinoFrame());
             Set<String> newKeys = new HashSet<>();
@@ -1378,6 +1406,7 @@ public final class SlotsManager {
                 if (!newKeys.contains(slotKey(block))) block.setType(Material.AIR, false);
             }
         }
+        clearShelfContents(station);
         if (restoreStorage.has(station.key())) {
             restoreStorage.restoreAndForget(station.key());
         }
@@ -1402,7 +1431,7 @@ public final class SlotsManager {
         for (SlotPos pos : positions) {
             for (int burst = 0; burst < Math.max(1, fireworksPerWin); burst++) {
                 int delay = burstDelay;
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                PlatformScheduler.runTaskLater(plugin, runtime.station.originLocation(), () -> {
                     SlotsGeometry geometry = runtime.geometry();
                     Block slotBlock = geometry.reelBlock(pos.col(), pos.row());
                     Location launchPoint = slotBlock.getRelative(BlockFace.DOWN).getLocation().add(0.5, 0.1, 0.5);

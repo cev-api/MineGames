@@ -4,6 +4,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -20,18 +21,7 @@ import org.joml.Vector3f;
 
 final class DiceInstance {
     private static final float DISPLAY_SCALE = 0.72F;
-    private static final int MAX_AGE_TICKS = 240;
-    private static final Vector3f WORLD_UP = new Vector3f(0.0F, 1.0F, 0.0F);
-    // Standard player-head UV faces: bottom=1, right=2, front=3, back=4, left=5, top=6.
-    private static final Vector3f[] FACE_NORMALS = new Vector3f[]{
-            null,
-            new Vector3f(0.0F, -1.0F, 0.0F),
-            new Vector3f(1.0F, 0.0F, 0.0F),
-            new Vector3f(0.0F, 0.0F, -1.0F),
-            new Vector3f(0.0F, 0.0F, 1.0F),
-            new Vector3f(-1.0F, 0.0F, 0.0F),
-            new Vector3f(0.0F, 1.0F, 0.0F)
-    };
+    private static final int MAX_AGE_TICKS = 600;
 
     private final org.bukkit.NamespacedKey entityKey;
     private final UUID id = UUID.randomUUID();
@@ -41,8 +31,14 @@ final class DiceInstance {
     private final Vector velocity;
     private final Vector angularVelocity;
     private final int result;
-    @SuppressWarnings("unused")
     private final ItemStack sourceItem;
+    private final String color;
+    private final boolean craps;
+    private final UUID sessionId;
+    private final int dieNumber;
+    private final UUID rollGroupId;
+    private final boolean glowing;
+    private final boolean particles;
     private Quaternionf rotation = new Quaternionf();
     private Quaternionf settleStartRotation;
     private Quaternionf targetRotation;
@@ -55,7 +51,8 @@ final class DiceInstance {
     private boolean removing;
 
     DiceInstance(org.bukkit.NamespacedKey entityKey, UUID ownerId, Location spawnLocation,
-                 Vector initialVelocity, int result, ItemStack sourceItem) {
+                 Vector initialVelocity, int result, ItemStack sourceItem, String color, boolean craps,
+                 UUID sessionId, int dieNumber, UUID rollGroupId, boolean glowing, boolean particles) {
         this.entityKey = entityKey;
         this.ownerId = ownerId;
         this.world = spawnLocation.getWorld();
@@ -67,7 +64,14 @@ final class DiceInstance {
                 randomAngularVelocity()
         );
         this.result = result;
-        this.sourceItem = sourceItem;
+        this.sourceItem = sourceItem.clone();
+        this.color = color;
+        this.craps = craps;
+        this.sessionId = sessionId;
+        this.dieNumber = dieNumber;
+        this.rollGroupId = rollGroupId;
+        this.glowing = glowing;
+        this.particles = particles;
     }
 
     void spawn() {
@@ -77,11 +81,13 @@ final class DiceInstance {
         Location location = location();
         display = world.spawn(location, ItemDisplay.class, spawned -> {
             spawned.setItemStack(sourceItem);
-            spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
+            // DiceOrientation accounts for the skull model in this item context.
+            spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             spawned.setPersistent(false);
             spawned.setInvulnerable(true);
             spawned.setSilent(true);
             spawned.setGravity(false);
+            spawned.setGlowing(glowing);
             spawned.setBillboard(Display.Billboard.FIXED);
             spawned.setDisplayWidth((float) (DiceManager.dieHalfSize() * 2.0D));
             spawned.setDisplayHeight((float) (DiceManager.dieHalfSize() * 2.0D));
@@ -118,7 +124,7 @@ final class DiceInstance {
             return false;
         }
         age++;
-        if (age > MAX_AGE_TICKS && state != DiceState.FINISHED) {
+        if (age > MAX_AGE_TICKS) {
             return false;
         }
         if (state == DiceState.FINISHED) {
@@ -140,6 +146,10 @@ final class DiceInstance {
             return false;
         }
         angularVelocity.multiply(0.985D);
+        if (particles && age % 3 == 0) {
+            world.spawnParticle(Particle.END_ROD, location().add(0.0D, 0.02D, 0.0D),
+                    1, 0.035D, 0.035D, 0.035D, 0.0D);
+        }
         updateEntities();
         return true;
     }
@@ -320,8 +330,7 @@ final class DiceInstance {
     }
 
     private Quaternionf finalRotation(int face, float yaw) {
-        Quaternionf faceToUp = new Quaternionf().rotationTo(FACE_NORMALS[face], WORLD_UP);
-        return new Quaternionf().rotateY(yaw).mul(faceToUp).normalize();
+        return DiceOrientation.finalRotation(color, face, yaw);
     }
 
     private float randomAngularVelocity() {
@@ -354,6 +363,34 @@ final class DiceInstance {
 
     UUID ownerId() {
         return ownerId;
+    }
+
+    boolean craps() {
+        return craps;
+    }
+
+    UUID sessionId() {
+        return sessionId;
+    }
+
+    int dieNumber() {
+        return dieNumber;
+    }
+
+    UUID rollGroupId() {
+        return rollGroupId;
+    }
+
+    int result() {
+        return result;
+    }
+
+    ItemStack sourceItem() {
+        return sourceItem.clone();
+    }
+
+    boolean expired() {
+        return age > MAX_AGE_TICKS;
     }
 
     DiceState state() {

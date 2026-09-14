@@ -20,7 +20,7 @@ final class HologramStyle {
 
     static void apply(MinegamePlugin plugin, TextDisplay display) {
         display.setDefaultBackground(false);
-        int backgroundOpacity = Math.max(0, Math.min(255, plugin.getConfig().getInt("hologram.background-opacity", 128)));
+        int backgroundOpacity = Math.max(0, Math.min(255, plugin.getConfig().getInt("hologram.background-opacity", 255)));
         display.setBackgroundColor(parseColor(plugin.getConfig().getString("hologram.background-color", "#000000"), backgroundOpacity));
         int opacity = Math.max(0, Math.min(255, plugin.getConfig().getInt("hologram.foreground-opacity", 255)));
         display.setTextOpacity((byte) opacity);
